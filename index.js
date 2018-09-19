@@ -3,7 +3,7 @@ const Influx = require('influx');
 /**
  * Responds to any HTTP request.
  *
- * @param {!express:Request} req HTTP request context.
+ * @param {!express:Request} req HTTP request context. See http://expressjs.com/en/api.html#req
  * @param {!express:Response} res HTTP response context.
  */
 exports.helloWorld = (req, res) => {
@@ -91,6 +91,7 @@ exports.helloWorld = (req, res) => {
             console.error(`Error saving data to InfluxDB! ${err.stack}`);
             res.status(500).send(`Error saving data to InfluxDB! ${err.stack}`)
         }).then(() => {
+            // TODO: Figure out how to send this only on success, it works as is but it's confusing.
             console.log('Successfully wrote!');
             res.status(200).send(`Successfully wrote to ` +
                 `${influxdb_protocol}://${influxdb_host}:${influxdb_port}/${influxdb_database} ` +
