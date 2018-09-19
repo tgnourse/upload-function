@@ -1,4 +1,16 @@
 {
   "name": "sample-http",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "dependencies": {
+    "influx": "^5.0.7"
+  },
+  "main": "index.js",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://source.developers.google.com/p/iot-data-storage/r/upload-function"
+  },
+  "author": "",
+  "license": "",
+  "description": ""
 }
