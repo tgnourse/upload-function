@@ -6,7 +6,7 @@ const Influx = require('influx');
  * @param {!express:Request} req HTTP request context. See http://expressjs.com/en/api.html#req
  * @param {!express:Response} res HTTP response context.
  */
-exports.helloWorld = (req, res) => {
+exports.uploadFunction = (req, res) => {
     const influxdb_user = process.env.influxdb_user;
     const influxdb_password = process.env.influxdb_password;
     const influxdb_host = process.env.influxdb_host;
@@ -99,7 +99,8 @@ exports.helloWorld = (req, res) => {
                 `\n${JSON.stringify(point)}`);
         });
 
-    // Code for querying.
+    // Code for querying. Use for debugging if needed but note that the user might not have READ
+    // access.
     // console.log('Attempting to query latest data.');
     // influx.query(`select * from ${measurement} limit 1`)
     //     .then(result => {
