@@ -57,7 +57,7 @@ exports.uploadFunction = (req, res) => {
                     heap: Influx.FieldType.INTEGER, // B
                 },
                 tags: [
-                    'sensor_id', 'ip', 'ssid'
+                    'sensor_id', 'original_sensor_id', 'ip', 'ssid'
                 ]
             }
         ]
@@ -99,7 +99,7 @@ exports.uploadFunction = (req, res) => {
             humidity: humidity,
             vapor_density: vapor_density,
             heap: heap
-        }, tags: { sensor_id: sensor_id_alias, ip: ip, ssid: ssid }
+        }, tags: { sensor_id: sensor_id_alias, original_sensor_id: sensor_id, ip: ip, ssid: ssid }
     };
 
     console.log('Going to write this point to InfluxDB:');
