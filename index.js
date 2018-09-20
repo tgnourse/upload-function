@@ -13,6 +13,20 @@ exports.uploadFunction = (req, res) => {
     const influxdb_port = process.env.influxdb_port;
     const influxdb_database = process.env.influxdb_database;
 
+    // Maps between sensor_id and a better name for that sensor. Note that it doesn't do anything
+    // special to check for overlap, etc.
+    let sensor_mapping = {};
+    try {
+        sensor_mapping_str = process.env.sensor_mapping;
+        // Use the below for testing.
+        // sensor_mapping_str = '{"test" : "test_alias"}';
+        sensor_mapping = JSON.parse(sensor_mapping_str);
+        console.log(`Using this sensor mapping: ${JSON.stringify(sensor_mapping)}`);
+    } catch (e) {
+        console.error(
+            `Problem parsing sensor_mapping env variable: "${sensor_mapping_str}" with error ${e}`);
+    }
+
     const influxdb_protocol = 'https';
 
     console.log('Setting up InfluxDB connection with' +
@@ -72,6 +86,12 @@ exports.uploadFunction = (req, res) => {
     const saturation_vapor_density = 5.018+0.32321*temp_c+8.1847*0.0081847*temp_c*temp_c+0.00031243*temp_c*temp_c*temp_c;
     const vapor_density = (humidity / 100.0) * saturation_vapor_density;
 
+    // Alias the sensor_id if necessary.
+    let sensor_id_alias = sensor_id;
+    if (sensor_id in sensor_mapping) {
+        sensor_id_alias = sensor_mapping[sensor_id];
+    }
+
     const point = {
         measurement: measurement,
         fields: {
@@ -79,7 +99,7 @@ exports.uploadFunction = (req, res) => {
             humidity: humidity,
             vapor_density: vapor_density,
             heap: heap
-        }, tags: { sensor_id: sensor_id, ip: ip, ssid: ssid }
+        }, tags: { sensor_id: sensor_id_alias, ip: ip, ssid: ssid }
     };
 
     console.log('Going to write this point to InfluxDB:');
