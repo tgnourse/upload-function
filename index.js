@@ -54,6 +54,8 @@ exports.uploadFunction = (req, res) => {
                     temperature: Influx.FieldType.FLOAT, // F
                     humidity: Influx.FieldType.FLOAT, // %
                     vapor_density: Influx.FieldType.FLOAT, // g/m^3
+                    pressure_temperature: Influx.FieldType.FLOAT, // F
+                    pressure: Influx.FieldType.FLOAT, // inHg
                     heap: Influx.FieldType.INTEGER, // B
                 },
                 tags: [
@@ -80,6 +82,8 @@ exports.uploadFunction = (req, res) => {
     const ip = req.query['ip'];
     const ssid = req.query['ssid'];
     const sensor_id = req.query['sensor_id'];
+    const pressure = req.query['pressure']
+    const pressure_temperature = req.query['pressure_temperature']
 
     // Below this is calculated.
     const temp_c = (temperature - 32) * (5.0/9.0);
@@ -98,6 +102,8 @@ exports.uploadFunction = (req, res) => {
             temperature: temperature,
             humidity: humidity,
             vapor_density: vapor_density,
+            pressure: pressure,
+            pressure_temperature: pressure_temperature,
             heap: heap
         }, tags: { sensor_id: sensor_id_alias, original_sensor_id: sensor_id, ip: ip, ssid: ssid }
     };
