@@ -82,8 +82,14 @@ exports.uploadFunction = (req, res) => {
     const ip = req.query['ip'];
     const ssid = req.query['ssid'];
     const sensor_id = req.query['sensor_id'];
-    const pressure = req.query['pressure']
-    const pressure_temperature = req.query['pressure_temperature']
+    let pressure = req.query['pressure'];
+    let pressure_temperature = req.query['pressure_temperature'];
+
+    // Some devices don't nil out the pressure data correctly. Correct it here.
+    if (pressure_temperature === 55.13) {
+        pressure = null;
+        pressure_temperature = null;
+    }
 
     // Below this is calculated.
     const temp_c = (temperature - 32) * (5.0/9.0);
