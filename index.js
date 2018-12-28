@@ -86,7 +86,7 @@ exports.uploadFunction = (req, res) => {
     let pressure_temperature = req.query['pressure_temperature'];
 
     // Some devices don't nil out the pressure data correctly. Correct it here.
-    if (pressure_temperature === 55.13) {
+    if (pressure_temperature == "55.13") {
         pressure = null;
         pressure_temperature = null;
     }
