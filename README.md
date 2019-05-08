@@ -1,5 +1,5 @@
 # upload-function
-Google Cloud Function for uploading data to an InfluxDB instance.
+Google Cloud Function for uploading environmental data to an InfluxDB instance.
 
 Takes the following environmental variables:
 * `influxdb_user`: The user.
