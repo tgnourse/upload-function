@@ -56,6 +56,7 @@ exports.uploadFunction = (req, res) => {
     // Collect the data from the HTTP request query parameters.
     console.log('Query Parameters:');
     console.log(req.query);
+    const timestamp_ns = req.query['timestamp_ns'];
     const fft_level = req.query['fft_level'];
     const rms_level = req.query['rms_level'];
     const site = req.query['site'];
@@ -63,6 +64,7 @@ exports.uploadFunction = (req, res) => {
     const receiver = req.query['receiver'];
 
     const point = {
+        timestamp: timestamp_ns,
         measurement: measurement,
         fields: {
             fft_level: fft_level,
