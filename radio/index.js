@@ -13,20 +13,6 @@ exports.uploadFunction = (req, res) => {
     const influxdb_port = process.env.influxdb_port;
     const influxdb_database = process.env.influxdb_database;
 
-    // Maps between sensor_id and a better name for that sensor. Note that it doesn't do anything
-    // special to check for overlap, etc.
-    let sensor_mapping = {};
-    try {
-        sensor_mapping_str = process.env.sensor_mapping;
-        // Use the below for testing.
-        // sensor_mapping_str = '{"test" : "test_alias"}';
-        sensor_mapping = JSON.parse(sensor_mapping_str);
-        console.log(`Using this sensor mapping: ${JSON.stringify(sensor_mapping)}`);
-    } catch (e) {
-        console.error(
-            `Problem parsing sensor_mapping env variable: "${sensor_mapping_str}" with error ${e}`);
-    }
-
     const influxdb_protocol = 'https';
 
     console.log('Setting up InfluxDB connection with' +
@@ -38,7 +24,7 @@ exports.uploadFunction = (req, res) => {
     // Tell node to ignore TLS rejections because the InfluxDB certificate is self signed.
     process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 
-    const measurement = 'environment_sensor';
+    const measurement = 'atmospheric_noise';
 
     const influx = new Influx.InfluxDB({
         host: influxdb_host,
@@ -51,16 +37,10 @@ exports.uploadFunction = (req, res) => {
             {
                 measurement: measurement,
                 fields: {
-                    temperature: Influx.FieldType.FLOAT, // F
-                    humidity: Influx.FieldType.FLOAT, // %
-                    vapor_density: Influx.FieldType.FLOAT, // g/m^3
-                    pressure_temperature: Influx.FieldType.FLOAT, // F
-                    pressure: Influx.FieldType.FLOAT, // inHg
-                    heap: Influx.FieldType.INTEGER, // B
+                    fft_level: Influx.FieldType.FLOAT,
+                    rms_level: Influx.FieldType.FLOAT,
                 },
-                tags: [
-                    'sensor_id', 'original_sensor_id', 'ip', 'ssid'
-                ]
+                tags: [ 'site', 'band', 'receiver' ]
             }
         ]
     });
@@ -76,42 +56,22 @@ exports.uploadFunction = (req, res) => {
     // Collect the data from the HTTP request query parameters.
     console.log('Query Parameters:');
     console.log(req.query);
-    const temperature = req.query['temperature'];
-    const humidity = req.query['hum'];
-    const heap = req.query['heap'];
-    const ip = req.query['ip'];
-    const ssid = req.query['ssid'];
-    const sensor_id = req.query['sensor_id'];
-    let pressure = req.query['pressure'];
-    let pressure_temperature = req.query['pressure_temperature'];
-
-    // Some devices don't nil out the pressure data correctly. Correct it here.
-    if (pressure_temperature == "55.13") {
-        pressure = null;
-        pressure_temperature = null;
-    }
-
-    // Below this is calculated.
-    const temp_c = (temperature - 32) * (5.0/9.0);
-    const saturation_vapor_density = 5.018+0.32321*temp_c+8.1847*0.0081847*temp_c*temp_c+0.00031243*temp_c*temp_c*temp_c;
-    const vapor_density = (humidity / 100.0) * saturation_vapor_density;
-
-    // Alias the sensor_id if necessary.
-    let sensor_id_alias = sensor_id;
-    if (sensor_id in sensor_mapping) {
-        sensor_id_alias = sensor_mapping[sensor_id];
-    }
+    const fft_level = req.query['fft_level'];
+    const rms_level = req.query['rms_level'];
+    const site = req.query['site'];
+    const band = req.query['band'];
+    const receiver = req.query['receiver'];
 
     const point = {
         measurement: measurement,
         fields: {
-            temperature: temperature,
-            humidity: humidity,
-            vapor_density: vapor_density,
-            pressure: pressure,
-            pressure_temperature: pressure_temperature,
-            heap: heap
-        }, tags: { sensor_id: sensor_id_alias, original_sensor_id: sensor_id, ip: ip, ssid: ssid }
+            fft_level: fft_level,
+            rms_level: rms_level
+        }, tags: {
+            site: site,
+            band: band,
+            receiver: receiver
+        }
     };
 
     console.log('Going to write this point to InfluxDB:');
