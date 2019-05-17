@@ -45,14 +45,6 @@ exports.uploadFunction = (req, res) => {
         ]
     });
 
-    // Some hard coded data for testing without query parameters.
-    // const temperature = 81.316319523919;
-    // const humidity = 43.363088426032;
-    // const heap = 33752;
-    // const ip = '192.168.1.132';
-    // const ssid = 'Blinky';
-    // const sensor_id = 'tgnourse12';
-
     // Collect the data from the HTTP request query parameters.
     console.log('Query Parameters:');
     console.log(req.query);
@@ -92,16 +84,4 @@ exports.uploadFunction = (req, res) => {
                 `as ${influxdb_user} with this data:` +
                 `\n${JSON.stringify(point)}`);
         });
-
-    // Code for querying. Use for debugging if needed but note that the user might not have READ
-    // access.
-    // console.log('Attempting to query latest data.');
-    // influx.query(`select * from ${measurement} limit 1`)
-    //     .then(result => {
-    //         console.log('Results were fetched ... returning.');
-    //         res.status(200).json(result)
-    //     }).catch(err => {
-    //     res.status(500).send(`Error querying data from InfluxDB! ${err.stack}`)
-    // });
-    // console.log('Query was attempted ... ');
 };
