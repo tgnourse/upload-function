@@ -80,7 +80,7 @@ exports.uploadFunction = (req, res) => {
     console.log(point);
 
     // Go ahead and write the data.
-    influx.writePoints([point])
+    influx.writePoints([point], { precision: 'ms' })
         .catch(err => {
             console.error(`Error saving data to InfluxDB! ${err.stack}`);
             res.status(500).send(`Error saving data to InfluxDB! ${err.stack}`)
