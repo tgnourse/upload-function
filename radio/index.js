@@ -54,7 +54,7 @@ exports.uploadFunction = (req, res) => {
     const site = req.query['site'];
     const band = req.query['band'];
     const receiver = req.query['receiver'];
-    const band = req.query['maidenhead'];
+    const maidenhead = req.query['maidenhead'];
 
     const point = {
         timestamp: timestamp_ms,
