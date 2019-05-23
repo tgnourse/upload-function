@@ -8,7 +8,7 @@ Takes the following environmental variables:
 * `influxdb_port`: Duh.
 * `influxdb_database`: Note the user only needs `WRITE` access to the DB.
 
-Send data like this:
+Send data for environmental upload like this:
 ```shell
 curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload\
     \?temperature\=81.340352483406\
@@ -17,4 +17,17 @@ curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload\
     \&ip\=192.168.1.132\
     \&ssid\=SSID\
     \&sensor_id\=Sensor1
+```
+
+Send data for radio upload like this:
+
+```shell
+curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload_radio\
+    \?fft_level\=-160.5\
+    \&rms_level\=-170.3\
+    \&site\=KPH\
+    \&band\=630\
+    \&receiver\=KiwiSDR15\
+    \&maidenhead\=BL10rx\
+    \&timestamp_ms\=1557379279758
 ```
