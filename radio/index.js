@@ -40,7 +40,7 @@ exports.uploadFunction = (req, res) => {
                     fft_level: Influx.FieldType.FLOAT,
                     rms_level: Influx.FieldType.FLOAT,
                 },
-                tags: [ 'site', 'band', 'receiver', 'maidenhead' ]
+                tags: [ 'site', 'band', 'receiver', 'maidenhead', 'grid' ]
             }
         ]
     });
@@ -55,6 +55,7 @@ exports.uploadFunction = (req, res) => {
     const band = req.query['band'];
     const receiver = req.query['receiver'];
     const maidenhead = req.query['maidenhead'];
+    const grid = req.query['grid'];
 
     const point = {
         timestamp: timestamp_ms,
@@ -66,7 +67,8 @@ exports.uploadFunction = (req, res) => {
             site: site,
             band: band,
             receiver: receiver,
-            maidenhead: maidenhead
+            maidenhead: maidenhead,
+            grid: grid,
         }
     };
 
