@@ -1,1 +1,23 @@
-{"tgnourse1" : "under_front_stairs", "tgnourse4" : "master_bedroom", "tgnourse5" : "maintenance_closet", "tgnourse6" : "tommy_closet", "tgnourse7" : "back_room", "tgnourse2" : "henry_house", "tgnourse13" : "upstairs_bathroom", "tgnourse12" : "downstairs_hallway", "tgnourse8" : "downstairs_bathroom", "tgnourse3" : "outside_front", "ranch1": "brightside_owl_barn", "tahoe1":  "tahoe_treehouse", "tahoe2": "tahoe_living_room", "garrett1": "garrett_sf_apartment", "brightside-watershed":  "brightside_watershed"}
+{
+  "tgnourse1":"under_front_stairs",
+  "tgnourse2":"henry_house",
+  "tgnourse3":"outside_front",
+  "tgnourse4":"master_bedroom",
+  "tgnourse5":"maintenance_closet",
+  "tgnourse6":"tommy_closet",
+  "tgnourse7":"back_room",
+  "tgnourse8":"downstairs_bathroom",
+  "tgnourse12":"downstairs_hallway",
+  "tgnourse13":"upstairs_bathroom",
+  "ranch1":"brightside_owl_barn",
+  "brightside-watershed":"brightside_watershed",
+  "garrett1":"garrett_sf_apartment",
+  "garrett2":"red_house_equipment_closet",
+  "garrett3":"dance_hall_av_cabinet",
+  "garrett4":"conex_box_station",
+  "garrett5":"garrett_sf_apartment",
+  "garrett6":"unit_52_upstairs",
+  "garrett7":"unit_52_downstairs",
+  "garrett8":"tahoe_treehouse",
+  "garrett9":"tahoe_living_room"
+}
