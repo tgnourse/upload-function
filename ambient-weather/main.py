@@ -6,6 +6,7 @@ When this limit is exceeded, the API will return a 429 response code. Please be 
 import pprint
 from influxdb import InfluxDBClient
 import requests
+import json
 
 
 def get_data(application_key, api_key, mac):
@@ -98,7 +99,7 @@ def hello_world(request):
     mac = request.args.get('mac', None)
     model = request.args.get('model', None)
 
-    sensor_mapping = request.environ.get("sensor_mapping", {})
+    sensor_mapping = json.loads(request.environ.get("sensor_mapping", "{}"))
     pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
 
     data = get_data(application_key, api_key, mac)
