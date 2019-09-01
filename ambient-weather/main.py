@@ -24,12 +24,12 @@ def vapor_density(temperature, humidity):
     return (humidity / 100.0) * saturation_vapor_density
 
 
-def transform_outdoor(mac, model, station_data):
+def transform_outdoor(mac, name, model, station_data):
     return [
         {
             "measurement": "environment_sensor",
             "tags": {
-                "sensor_id": mac + "_outdoor",
+                "sensor_id": name + "_outdoor",
                 "original_sensor_id": mac + "_outdoor",
                 "mac": mac,
                 "model": model,
@@ -57,12 +57,12 @@ def transform_outdoor(mac, model, station_data):
     ]
 
 
-def transform_indoor(mac, model, station_data):
+def transform_indoor(mac, name, model, station_data):
     return [
         {
             "measurement": "environment_sensor",
             "tags": {
-                "sensor_id": mac + "_indoor",
+                "sensor_id": name + "_indoor",
                 "original_sensor_id": mac + "_indoor",
                 "mac": mac,
                 "model": model,
@@ -103,9 +103,10 @@ def hello_world(request):
 
     data = get_data(application_key, api_key, mac)
     pprint.pprint(data)
-    outdoor_point = transform_outdoor(mac, model, data[0])
+    name = sensor_mapping.get(mac, mac)
+    outdoor_point = transform_outdoor(mac, name, model, data[0])
     pprint.pprint(outdoor_point)
-    indoor_point = transform_indoor(mac, model, data[0])
+    indoor_point = transform_indoor(mac, name, model, data[0])
     pprint.pprint(outdoor_point)
 
     host = request.environ.get("influxdb_host")
