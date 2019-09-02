@@ -9,8 +9,8 @@ import requests
 import json
 
 
-def get_data(application_key, api_key, mac):
-    url = f'https://api.ambientweather.net/v1/devices/{mac}?apiKey={api_key}&applicationKey={application_key}&limit=1'
+def get_devices(application_key, api_key):
+    url = f'https://api.ambientweather.net/v1/devices/?apiKey={api_key}&applicationKey={application_key}&limit=1'
 
     response = requests.get(url)
     if response:
@@ -25,48 +25,51 @@ def vapor_density(temperature, humidity):
     return (humidity / 100.0) * saturation_vapor_density
 
 
-def transform_outdoor(mac, name, model, station_data):
-    return [
-        {
-            "measurement": "environment_sensor",
-            "tags": {
-                "sensor_id": name + "_outdoor",
-                "original_sensor_id": mac + "_outdoor",
-                "mac": mac,
-                "model": model,
-                "outdoor": True
-            },
-            "time": station_data.get('date'),
-            "fields": {
-                "temperature": float(station_data.get('tempf')),
-                "humidity": float(station_data.get('humidity')),
-                "vapor_density": vapor_density(station_data.get('tempf'), station_data.get('humidity')),
-                "pressure": float(station_data.get('baromabsin')),
-                "solar_radiation": float(station_data.get('solarradiation')),
-                "wind_direction": station_data.get('winddir'),
-                "wind_speed_mph": float(station_data.get('windspeedmph')),
-                "wind_speed_max_10min_mph": float(station_data.get('windgustmph')),
-                "wind_speed_max_daily_mph": float(station_data.get('maxdailygust')),
-                "uv": float(station_data.get('uv')),
-                "hourly_rain_inches": float(station_data.get('hourlyrainin')),
-                "daily_rain_inches": float(station_data.get('dailyrainin')),
-                "weekly_rain_inches": float(station_data.get('weeklyrainin')),
-                "monthly_rain_inches": float(station_data.get('monthlyrainin')),
-                "battery_status": float(station_data.get('battout'))
+def transform_outdoor(mac, location, name, sensor_name, station_data):
+    if station_data.get('tempf'):
+        return [
+            {
+                "measurement": "environment_sensor",
+                "tags": {
+                    "sensor_id": sensor_name + "_outdoor",
+                    "original_sensor_id": mac + "_outdoor",
+                    "location": location,
+                    "name": name,
+                    "mac": mac,
+                    "outdoor": True
+                },
+                "time": station_data.get('date'),
+                "fields": {
+                    "temperature": float(station_data.get('tempf')),
+                    "humidity": float(station_data.get('humidity')),
+                    "vapor_density": vapor_density(station_data.get('tempf'), station_data.get('humidity')),
+                    "solar_radiation": float(station_data.get('solarradiation')),
+                    "wind_direction": station_data.get('winddir'),
+                    "wind_speed_mph": float(station_data.get('windspeedmph')),
+                    "wind_speed_max_10min_mph": float(station_data.get('windgustmph')),
+                    "wind_speed_max_daily_mph": float(station_data.get('maxdailygust')),
+                    "uv": float(station_data.get('uv')),
+                    "hourly_rain_inches": float(station_data.get('hourlyrainin')),
+                    "daily_rain_inches": float(station_data.get('dailyrainin')),
+                    "weekly_rain_inches": float(station_data.get('weeklyrainin')),
+                    "monthly_rain_inches": float(station_data.get('monthlyrainin')),
+                    "battery_status": float(station_data.get('battout', -1))
+                }
             }
-        }
-    ]
+        ]
+    return None
 
 
-def transform_indoor(mac, name, model, station_data):
+def transform_indoor(mac, location, name, sensor_name, station_data):
     return [
         {
             "measurement": "environment_sensor",
             "tags": {
-                "sensor_id": name + "_indoor",
+                "sensor_id": sensor_name + "_indoor",
                 "original_sensor_id": mac + "_indoor",
+                "location": location,
+                "name": name,
                 "mac": mac,
-                "model": model,
                 "indoor": True
             },
             "time": station_data.get('date'),
@@ -81,8 +84,43 @@ def transform_indoor(mac, name, model, station_data):
 
 
 def upload_data(host, port, user, password, dbname, data):
+    print('Uploading this data:\n')
+    pprint.pprint(data)
     client = InfluxDBClient(host, port, user, password, dbname, ssl=True, verify_ssl=False)
     return client.write_points(data)
+
+
+def process_data(sensor_mapping, application_key, api_key, host, port, user, password, dbname):
+    pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
+
+    points = []
+
+    devices = get_devices(application_key, api_key)
+
+    for device in devices:
+        # Unpack incoming data.
+        data = device['lastData']
+        mac = device['macAddress']
+        location = device['info']['location']
+        name = device['info']['name']
+        # pprint.pprint(data)
+        sensor_name = sensor_mapping.get(mac, f'{location} - {name}')
+
+        # Outdoor point
+        outdoor_point = transform_outdoor(mac, location, name, sensor_name, data)
+        # pprint.pprint(outdoor_point)
+        if outdoor_point:
+            points = points + outdoor_point
+
+        # Indoor point
+        indoor_point = transform_indoor(mac, location, name, sensor_name, data)
+        # pprint.pprint(indoor_point)
+        points = points + indoor_point
+
+    if upload_data(host, port, user, password, dbname, points):
+        return f'Success!\n'
+    else:
+        return f'Failed :(\n'
 
 
 def hello_world(request):
@@ -96,19 +134,9 @@ def hello_world(request):
     """
     application_key = request.args.get('applicationKey', None)
     api_key = request.args.get('apiKey', None)
-    mac = request.args.get('mac', None)
-    model = request.args.get('model', None)
 
     sensor_mapping = json.loads(request.environ.get("sensor_mapping", "{}"))
     pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
-
-    data = get_data(application_key, api_key, mac)
-    pprint.pprint(data)
-    name = sensor_mapping.get(mac, mac)
-    outdoor_point = transform_outdoor(mac, name, model, data[0])
-    pprint.pprint(outdoor_point)
-    indoor_point = transform_indoor(mac, name, model, data[0])
-    pprint.pprint(outdoor_point)
 
     host = request.environ.get("influxdb_host")
     port = request.environ.get("influxdb_port")
@@ -116,10 +144,7 @@ def hello_world(request):
     password = request.environ.get("influxdb_password")
     dbname = request.environ.get("influxdb_database")
 
-    if upload_data(host, port, user, password, dbname, outdoor_point + indoor_point):
-        return f'Success!\n'
-    else:
-        return f'Failed :(\n'
+    return process_data(sensor_mapping, application_key, api_key, host, port, user, password, dbname)
 
 
 if __name__ == "__main__":
