@@ -123,7 +123,7 @@ def process_data(sensor_mapping, application_key, api_key, host, port, user, pas
         return f'Failed :(\n'
 
 
-def hello_world(request):
+def upload_function(request):
     """Responds to any HTTP request.
     Args:
         request (flask.Request): HTTP request object.
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     @app.route('/')
     def index():
-        return hello_world(request)
+        return upload_function(request)
 
     app.run('127.0.0.1', 8000, debug=True)
 
