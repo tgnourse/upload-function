@@ -9,6 +9,8 @@
   "tgnourse8":"downstairs_bathroom",
   "tgnourse12":"downstairs_hallway",
   "tgnourse13":"upstairs_bathroom",
+  "tgnourse14": "kitchen",
+  "tgnourse_small_wine_fridge": "upstairs_fridge",
   "ranch1":"brightside_owl_barn",
   "brightside-watershed":"brightside_watershed",
   "garrett1":"garrett_sf_apartment",
@@ -19,6 +21,5 @@
   "garrett6":"unit_52_upstairs",
   "garrett7":"unit_52_downstairs",
   "garrett8":"tahoe_treehouse",
-  "garrett9":"tahoe_living_room",
-  "tgnourse_small_wine_fridge": "upstairs_fridge"
+  "garrett9":"tahoe_living_room"
 }
