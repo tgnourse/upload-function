@@ -114,11 +114,28 @@ exports.uploadFunction = (req, res) => {
         }, tags: { sensor_id: sensor_id_alias, original_sensor_id: sensor_id, ip: ip, ssid: ssid }
     };
 
-    console.log('Going to write this point to InfluxDB:');
-    console.log(point);
+    let points = [point];
+
+    // If there's a pressure value, add a separate point for that. This is so the temperatures can be directly compared.
+    let pressure_point = null;
+    if (pressure) {
+        pressure_point = {
+            measurement: measurement,
+            fields: {
+                temperature: pressure_temperature,
+                pressure: pressure,
+                pressure_temperature: pressure_temperature,
+                heap: heap
+            }, tags: {sensor_id: sensor_id_alias + "_pressure", original_sensor_id: sensor_id, ip: ip, ssid: ssid}
+        };
+        points.push(pressure_point);
+    }
+
+    console.log('Going to write these points to InfluxDB:');
+    console.log(points);
 
     // Go ahead and write the data.
-    influx.writePoints([point])
+    influx.writePoints(points)
         .catch(err => {
             console.error(`Error saving data to InfluxDB! ${err.stack}`);
             res.status(500).send(`Error saving data to InfluxDB! ${err.stack}`)
