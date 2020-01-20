@@ -10,7 +10,7 @@ def upload_data(host, port, user, password, dbname, data):
     print('Uploading this data to InfluxDB:')
     pprint.pprint(data)
     client = InfluxDBClient(host, int(port), user, password, dbname, ssl=True, verify_ssl=False)
-    return client.write_points(data)
+    return client.write_points(data, time_precision='s')
 
 
 def convert_time(date, time):
