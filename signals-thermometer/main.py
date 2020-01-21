@@ -95,16 +95,17 @@ def process_data(email, password, device_id, device_name, api_key,
     id_token = log_in(api_key, email, password)
     print('Id Token: ')
     pprint.pprint(id_token)
+    assert (id_token, 'Could not log in, id_token missing from response.')
 
     # Get the names of the devices
     names = get_names(device_id, id_token)
     print('Names: ')
     pprint.pprint(names)
+    assert (names, 'Could not get the names of the sensors.')
 
     # Get the most recent temperatures
     temps = get_temps(device_id, id_token, 50)  # 6 (10 sec) * 5 minutes = 30 (50 just to be safe).
-    # print('Temps: ')
-    # pprint.pprint(temps)
+    assert (temps, 'Could not get the temperatures of the sensors.')
 
     # Convert to InfluxDB format.
     points = transform_points(device_id, device_name, names, temps)
