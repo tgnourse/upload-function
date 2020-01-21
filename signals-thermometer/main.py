@@ -121,7 +121,7 @@ def upload_function(request):
     device_id = request.args.get('device_id', None)
     device_name = request.args.get('device_name', None)
 
-    api_key = request.environ.get("firebase_api_key")
+    api_key = request.environ.get("api_key")
     influx_host = request.environ.get("influxdb_host")
     influx_port = request.environ.get("influxdb_port")
     influx_user = request.environ.get("influxdb_user")
