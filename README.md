@@ -31,3 +31,9 @@ curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload_radio\
     \&maidenhead\=BL10rx\
     \&timestamp_ms\=1557379279758
 ```
+
+Includes additional functions for the following:
+* `/wspr` - upload [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as for
+[WSPRnet](http://wsprnet.org/)
+* `ambient-weather` - pulls data from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal
+weather stations.
