@@ -39,6 +39,7 @@ exports.uploadFunction = (req, res) => {
                 fields: {
                     fft_level: Influx.FieldType.FLOAT,
                     rms_level: Influx.FieldType.FLOAT,
+                    c2_level: Influx.FieldType.FLOAT,
                 },
                 tags: [ 'site', 'band', 'receiver', 'maidenhead', 'grid' ]
             }
@@ -51,6 +52,7 @@ exports.uploadFunction = (req, res) => {
     const timestamp_ms = req.query['timestamp_ms'];
     const fft_level = req.query['fft_level'];
     const rms_level = req.query['rms_level'];
+    const c2_level = req.query['c2_level'];
     const site = req.query['site'];
     const band = req.query['band'];
     const receiver = req.query['receiver'];
@@ -62,7 +64,8 @@ exports.uploadFunction = (req, res) => {
         measurement: measurement,
         fields: {
             fft_level: fft_level,
-            rms_level: rms_level
+            rms_level: rms_level,
+            c2_level: c2_level
         }, tags: {
             site: site,
             band: band,
