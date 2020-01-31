@@ -111,6 +111,9 @@ def upload_function(request):
                 mode=2"
         '''
 
+        print('GET')
+        pprint.pprint(request.args)
+
         # Required parameters.
         receive['rcall'] = request.args['rcall']
         receive['rgrid'] = request.args['rgrid']
