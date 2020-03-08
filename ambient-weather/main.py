@@ -61,6 +61,9 @@ def transform_outdoor(mac, location, name, sensor_name, station_data):
 
 
 def transform_indoor(mac, location, name, sensor_name, station_data):
+    pressure = None
+    if station_data.get('baromabsin'):
+        pressure = float(station_data.get('baromabsin', 0))
     return [
         {
             "measurement": "environment_sensor",
@@ -77,10 +80,37 @@ def transform_indoor(mac, location, name, sensor_name, station_data):
                 "temperature": float(station_data.get('tempinf')),
                 "humidity": float(station_data.get('humidityin')),
                 "vapor_density": vapor_density(station_data.get('tempinf'), station_data.get('humidityin')),
-                "pressure": float(station_data.get('baromabsin')),
+                "pressure": pressure,
             }
         }
     ]
+
+
+def transform_num(mac, location, name, sensor_name, station_data, num):
+    temp_key = 'temp' + str(num) + 'f'
+    hum_key = 'humidity' + str(num)
+
+    if station_data.get(temp_key):
+        return [
+            {
+                "measurement": "environment_sensor",
+                "tags": {
+                    "sensor_id": sensor_name + "_" + str(num),
+                    "original_sensor_id": mac + "_" + str(num),
+                    "location": location,
+                    "name": name,
+                    "mac": mac,
+                    "indoor": True
+                },
+                "time": station_data.get('date'),
+                "fields": {
+                    "temperature": float(station_data.get(temp_key)),
+                    "humidity": float(station_data.get(hum_key)),
+                    "vapor_density": vapor_density(station_data.get(temp_key), station_data.get(hum_key)),
+                }
+            }
+        ]
+    return None
 
 
 def upload_data(host, port, user, password, dbname, data):
@@ -90,7 +120,7 @@ def upload_data(host, port, user, password, dbname, data):
     return client.write_points(data)
 
 
-def process_data(sensor_mapping, application_key, api_key, host, port, user, password, dbname):
+def get_data(sensor_mapping, application_key, api_key):
     pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
 
     points = []
@@ -101,7 +131,7 @@ def process_data(sensor_mapping, application_key, api_key, host, port, user, pas
         # Unpack incoming data.
         data = device['lastData']
         mac = device['macAddress']
-        location = device['info']['location']
+        location = device['info'].get('location', device['info']['coords'].get('location'))
         name = device['info']['name']
         # pprint.pprint(data)
         sensor_name = sensor_mapping.get(mac, f'{location} - {name}')
@@ -112,10 +142,20 @@ def process_data(sensor_mapping, application_key, api_key, host, port, user, pas
         if outdoor_point:
             points = points + outdoor_point
 
-        # Indoor point
+        # Indoor points
         indoor_point = transform_indoor(mac, location, name, sensor_name, data)
         # pprint.pprint(indoor_point)
         points = points + indoor_point
+        for num in range(1, 8):
+            point = transform_num(mac, location, name, sensor_name, data, num)
+            if point:
+                points = points + point
+
+    return points
+
+
+def process_data(sensor_mapping, application_key, api_key, host, port, user, password, dbname):
+    points = get_data(sensor_mapping, application_key, api_key)
 
     if upload_data(host, port, user, password, dbname, points):
         return f'Success!\n'
