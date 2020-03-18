@@ -2,6 +2,7 @@
 
 """
 from influxdb import InfluxDBClient
+import pprint
 
 
 def get_data(host, port, user, password, dbname, sensor):
@@ -51,13 +52,15 @@ def get_function(request):
         influx_host, influx_port, influx_user, influx_password, influx_dbname, config['original_sensor_id']
     )
 
+    pprint.pprint(result)
+
     temperature = result.raw['series'][0]['values'][0][1]
 
     if temperature < configurations[id]['min']:
-        return configurations[id]['min_color']
+        return str(configurations[id]['min_color'])
     elif temperature > configurations[id]['max']:
-        return configurations[id]['max_color']
-    return configurations[id]['color']
+        return str(configurations[id]['max_color'])
+    return str(configurations[id]['color'])
 
 
 # Debug server that can be called directly.
