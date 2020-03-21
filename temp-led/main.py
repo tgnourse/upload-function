@@ -18,6 +18,7 @@ def get_function(request):
     id = request.args.get("id")
 
     configurations = {
+        # Bedroom
         '1': {
             'original_sensor_id': '24:7D:4D:A3:64:EE_1',
             'min': 66.0,
@@ -31,6 +32,27 @@ def get_function(request):
                 'red': 255,
                 'green': 0,
                 'blue': 0
+            },
+            'color': {
+                'red': 0,
+                'green': 255,
+                'blue': 0
+            }
+        },
+        # Refridgerator
+        '2': {
+            'original_sensor_id': '24:7D:4D:A3:64:EE_3',
+            'min': 33.0,
+            'max': 45.0,
+            'min_color': {
+                'red': 255,
+                'green': 0,
+                'blue': 0
+            },
+            'max_color': {
+                'red': 0,
+                'green': 255,
+                'blue': 255
             },
             'color': {
                 'red': 0,
