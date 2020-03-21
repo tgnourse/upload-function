@@ -43,7 +43,7 @@ def get_function(request):
         '2': {
             'original_sensor_id': '24:7D:4D:A3:64:EE_3',
             'min': 33.0,
-            'max': 45.0,
+            'max': 47.0,
             'min_color': {
                 'red': 255,
                 'green': 0,
