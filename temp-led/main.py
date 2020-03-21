@@ -50,9 +50,9 @@ def get_function(request):
                 'blue': 0
             },
             'max_color': {
-                'red': 0,
+                'red': 255,
                 'green': 255,
-                'blue': 255
+                'blue': 0
             },
             'color': {
                 'red': 0,
