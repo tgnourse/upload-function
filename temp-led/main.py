@@ -22,7 +22,7 @@ def get_function(request):
         '1': {
             'original_sensor_id': '24:7D:4D:A3:64:EE_1',
             'min': 66.0,
-            'max': 71.0,
+            'max': 72.0,
             'min_color': {
                 'red': 0,
                 'green': 0,
@@ -32,6 +32,7 @@ def get_function(request):
                 'red': 255,
                 'green': 0,
                 'blue': 0
+                
             },
             'color': {
                 'red': 0,
@@ -39,7 +40,7 @@ def get_function(request):
                 'blue': 0
             }
         },
-        # Refridgerator
+        # Refrigerator
         '2': {
             'original_sensor_id': '24:7D:4D:A3:64:EE_3',
             'min': 33.0,
