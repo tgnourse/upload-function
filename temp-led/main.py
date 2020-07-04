@@ -60,7 +60,46 @@ def get_function(request):
                 'green': 255,
                 'blue': 0
             }
-        }
+        },
+        # Bedroom (Test 7 LED)
+        '3': {
+            'original_sensor_id': '24:7D:4D:A3:64:EE_1',
+            'min': 66.0,
+            'max': 74.0,
+            'min_color': {
+                [
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                    {'red': 0, 'green': 0, 'blue': 255},
+                ]
+            },
+            'max_color': {
+                [
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                    {'red': 255, 'green': 0, 'blue': 0},
+                ]
+            },
+            'color': {
+                [
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                    {'red': 0, 'green': 255, 'blue': 0},
+                ]
+            }
+        },
     }
 
     influx_host = request.environ.get("influxdb_host")
