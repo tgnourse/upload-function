@@ -66,7 +66,7 @@ def get_function(request):
             'original_sensor_id': '24:7D:4D:A3:64:EE_1',
             'min': 66.0,
             'max': 74.0,
-            'min_color': {
+            'min_color':
                 [
                     {'red': 0, 'green': 0, 'blue': 255},
                     {'red': 0, 'green': 0, 'blue': 255},
@@ -75,9 +75,8 @@ def get_function(request):
                     {'red': 0, 'green': 0, 'blue': 255},
                     {'red': 0, 'green': 0, 'blue': 255},
                     {'red': 0, 'green': 0, 'blue': 255},
-                ]
-            },
-            'max_color': {
+                ],
+            'max_color':
                 [
                     {'red': 255, 'green': 0, 'blue': 0},
                     {'red': 255, 'green': 0, 'blue': 0},
@@ -86,9 +85,8 @@ def get_function(request):
                     {'red': 255, 'green': 0, 'blue': 0},
                     {'red': 255, 'green': 0, 'blue': 0},
                     {'red': 255, 'green': 0, 'blue': 0},
-                ]
-            },
-            'color': {
+                ],
+            'color':
                 [
                     {'red': 0, 'green': 255, 'blue': 0},
                     {'red': 0, 'green': 255, 'blue': 0},
@@ -98,7 +96,6 @@ def get_function(request):
                     {'red': 0, 'green': 255, 'blue': 0},
                     {'red': 0, 'green': 255, 'blue': 0},
                 ]
-            }
         },
     }
 
