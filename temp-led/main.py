@@ -140,17 +140,17 @@ def get_function(request):
         p_2_5_um = float(result['results'][0]['p_2_5_um'])
 
         if p_2_5_um <= 12.0:
-            return {'red': 0, 'green': 255, 'blue': 0}  # Green
+            return str({'red': 0, 'green': 255, 'blue': 0})  # Green
         elif p_2_5_um <= 35.4:
-            return {'red': 0, 'green': 255, 'blue': 255}  # Yellow
+            return str({'red': 0, 'green': 255, 'blue': 255})  # Yellow
         elif p_2_5_um <= 55.4:
-            return {'red': 255, 'green': 140, 'blue': 0}  # Orange
+            return str({'red': 255, 'green': 140, 'blue': 0})  # Orange
         elif p_2_5_um <= 150.4:
-            return {'red': 255, 'green': 0, 'blue': 0}  # Red
+            return str({'red': 255, 'green': 0, 'blue': 0})  # Red
         else:
-            return {'red': 255, 'green': 0, 'blue': 255}  # Purple
+            return str({'red': 255, 'green': 0, 'blue': 255})  # Purple
     else:
-        return {'red': 0, 'green': 0, 'blue': 0}  # Off
+        return str({'red': 0, 'green': 0, 'blue': 0})  # Off
 
 
 # Debug server that can be called directly.
