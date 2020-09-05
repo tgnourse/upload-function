@@ -1,8 +1,9 @@
-"""
-
-"""
 from influxdb import InfluxDBClient
 import pprint
+import requests
+
+TYPE_TEMPERATURE = 'temperature'
+TYPE_AIR_QUALITY = 'air_quality'
 
 
 def get_data(host, port, user, password, dbname, sensor):
@@ -20,6 +21,7 @@ def get_function(request):
     configurations = {
         # Bedroom
         '1': {
+            'type': TYPE_TEMPERATURE,
             'original_sensor_id': '24:7D:4D:A3:64:EE_1',
             'min': 66.0,
             'max': 74.0,
@@ -41,7 +43,8 @@ def get_function(request):
             }
         },
         # Insulin
-        '2': {
+        '4': {
+            'type': TYPE_TEMPERATURE,
             'original_sensor_id': '24:7D:4D:A3:64:EE_3',
             'min': 33.0,
             'max': 50.0,
@@ -63,6 +66,7 @@ def get_function(request):
         },
         # Bedroom (Test 7 LED)
         '3': {
+            'type': TYPE_TEMPERATURE,
             'original_sensor_id': '24:7D:4D:A3:64:EE_1',
             'min': 66.0,
             'max': 74.0,
@@ -97,39 +101,68 @@ def get_function(request):
                     {'red': 0, 'green': 255, 'blue': 0},
                 ]
         },
+        # Local Air Quality
+        '2': {
+            'type': TYPE_AIR_QUALITY,
+            'url': 'https://www.purpleair.com/json?show=22523',
+        },
     }
-
-    influx_host = request.environ.get("influxdb_host")
-    influx_port = request.environ.get("influxdb_port")
-    influx_user = request.environ.get("influxdb_user")
-    influx_password = request.environ.get("influxdb_password")
-    influx_dbname = request.environ.get("influxdb_database")
 
     config = configurations[id]
 
-    result = get_data(
-        influx_host, influx_port, influx_user, influx_password, influx_dbname, config['original_sensor_id']
-    )
+    if config['type'] == TYPE_TEMPERATURE:
+        influx_host = request.environ.get("influxdb_host")
+        influx_port = request.environ.get("influxdb_port")
+        influx_user = request.environ.get("influxdb_user")
+        influx_password = request.environ.get("influxdb_password")
+        influx_dbname = request.environ.get("influxdb_database")
+        result = get_data(
+            influx_host, influx_port, influx_user, influx_password, influx_dbname, config['original_sensor_id']
+        )
 
-    pprint.pprint(result)
+        pprint.pprint(result)
 
-    temperature = result.raw['series'][0]['values'][0][1]
+        temperature = result.raw['series'][0]['values'][0][1]
 
-    if temperature < configurations[id]['min']:
-        return str(configurations[id]['min_color'])
-    elif temperature > configurations[id]['max']:
-        return str(configurations[id]['max_color'])
-    return str(configurations[id]['color'])
+        if temperature < configurations[id]['min']:
+            return str(configurations[id]['min_color'])
+        elif temperature > configurations[id]['max']:
+            return str(configurations[id]['max_color'])
+        return str(configurations[id]['color'])
+    elif config['type'] == TYPE_AIR_QUALITY:
+        # AQI Calculation: https://www3.epa.gov/airnow/aqi-technical-assistance-document-sept2018.pdf
+        # This sensor: https://www.purpleair.com/map?opt=1/i/mAQI/a10/cC0&select=22523#15.55/37.745743/-122.430173
+        r = requests.get(config['url'])
+        result = r.json()
+
+        pprint.pprint(result)
+
+        p_2_5_um = float(result['results'][0]['p_2_5_um'])
+
+        if p_2_5_um <= 12.0:
+            return {'red': 0, 'green': 255, 'blue': 0}  # Green
+        elif p_2_5_um <= 35.4:
+            return {'red': 0, 'green': 255, 'blue': 255}  # Yellow
+        elif p_2_5_um <= 55.4:
+            return {'red': 255, 'green': 140, 'blue': 0}  # Orange
+        elif p_2_5_um <= 150.4:
+            return {'red': 255, 'green': 0, 'blue': 0}  # Red
+        else:
+            return {'red': 255, 'green': 0, 'blue': 255}  # Purple
+    else:
+        return {'red': 0, 'green': 0, 'blue': 0}  # Off
 
 
 # Debug server that can be called directly.
+# python3 main.py
+# curl 'http://localhost:8000/?id=1'
 if __name__ == "__main__":
     from flask import Flask, request
     app = Flask(__name__)
 
     @app.route('/')
     def index():
-        # Note that you'll need to fill these in.
+        # Note that you'll need to fill these in if needed.
         request.environ["influxdb_host"] = ""
         request.environ["influxdb_port"] = ""
         request.environ["influxdb_user"] = ""
