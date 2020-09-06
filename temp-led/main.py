@@ -136,7 +136,7 @@ def get_function(request):
 
         pprint.pprint(result)
 
-        p_2_5_um = float(result['results'][0]['p_2_5_um'])
+        p_2_5_um = float(result['results'][0]['PM2_5Value'])
 
         if p_2_5_um <= 12.0:
             return str({'red': 0, 'green': 255, 'blue': 0})  # Green
