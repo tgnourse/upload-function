@@ -104,7 +104,7 @@ def get_function(request):
         # Local Air Quality
         '2': {
             'type': TYPE_AIR_QUALITY,
-            'url': 'https://www.purpleair.com/json?show=20785',
+            'url': 'https://www.purpleair.com/json?show=38791',
         },
     }
 
@@ -131,7 +131,6 @@ def get_function(request):
         return str(configurations[id]['color'])
     elif config['type'] == TYPE_AIR_QUALITY:
         # AQI Calculation: https://www3.epa.gov/airnow/aqi-technical-assistance-document-sept2018.pdf
-        # This sensor: https://www.purpleair.com/map?opt=1/i/mAQI/a10/cC0&select=20785#15.55/37.745743/-122.430173
         r = requests.get(config['url'])
         result = r.json()
 
