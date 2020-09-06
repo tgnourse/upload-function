@@ -141,7 +141,7 @@ def get_function(request):
         if p_2_5_um <= 12.0:
             return str({'red': 0, 'green': 255, 'blue': 0})  # Green
         elif p_2_5_um <= 35.4:
-            return str({'red': 255, 'green': 255, 'blue': 0})  # Yellow
+            return str({'red': 255, 'green': 200, 'blue': 0})  # Yellow
         elif p_2_5_um <= 55.4:
             return str({'red': 255, 'green': 70, 'blue': 0})  # Orange
         elif p_2_5_um <= 150.4:
