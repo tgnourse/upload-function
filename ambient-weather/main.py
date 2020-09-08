@@ -61,6 +61,10 @@ def transform_outdoor(mac, location, name, sensor_name, station_data):
 
 
 def transform_indoor(mac, location, name, sensor_name, station_data):
+    # Can't proceed if there's no timestamp at a minimum.
+    if not station_data.get('date'):
+        return []
+
     pressure = None
     if station_data.get('baromabsin'):
         pressure = float(station_data.get('baromabsin'))
