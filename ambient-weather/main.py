@@ -63,7 +63,19 @@ def transform_outdoor(mac, location, name, sensor_name, station_data):
 def transform_indoor(mac, location, name, sensor_name, station_data):
     pressure = None
     if station_data.get('baromabsin'):
-        pressure = float(station_data.get('baromabsin', 0))
+        pressure = float(station_data.get('baromabsin'))
+
+    temperature = None
+    if station_data.get('tempinf'):
+        temperature = float(station_data.get('tempinf'))
+
+    humidity = None
+    if station_data.get('humidityin'):
+        float(station_data.get('humidityin'))
+
+    vapor_density_value = None
+    if humidity and temperature:
+        vapor_density_value = vapor_density(temperature, humidity)
     return [
         {
             "measurement": "environment_sensor",
@@ -77,9 +89,9 @@ def transform_indoor(mac, location, name, sensor_name, station_data):
             },
             "time": station_data.get('date'),
             "fields": {
-                "temperature": float(station_data.get('tempinf')),
-                "humidity": float(station_data.get('humidityin')),
-                "vapor_density": vapor_density(station_data.get('tempinf'), station_data.get('humidityin')),
+                "temperature": temperature,
+                "humidity": humidity,
+                "vapor_density": vapor_density_value,
                 "pressure": pressure,
             }
         }
@@ -144,7 +156,7 @@ def get_data(sensor_mapping, application_key, api_key):
 
         # Indoor points
         indoor_point = transform_indoor(mac, location, name, sensor_name, data)
-        # pprint.pprint(indoor_point)
+        pprint.pprint(indoor_point)
         points = points + indoor_point
         for num in range(1, 8):
             point = transform_num(mac, location, name, sensor_name, data, num)
