@@ -104,7 +104,7 @@ def get_function(request):
         # Local Air Quality
         '2': {
             'type': TYPE_AIR_QUALITY,
-            'url': 'https://www.purpleair.com/json?show=38791',
+            'url': 'https://www.purpleair.com/json?show=65697',
         },
     }
 
