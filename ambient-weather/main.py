@@ -3,6 +3,7 @@ API requests are capped at 1 request/second for each user's apiKey and 3 request
 When this limit is exceeded, the API will return a 429 response code. Please be kind to our servers :)
 """
 
+import os
 import pprint
 from influxdb import InfluxDBClient
 import requests
@@ -179,6 +180,13 @@ def process_data(sensor_mapping, application_key, api_key, host, port, user, pas
         return f'Failed :(\n'
 
 
+def get_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f'Missing required environment variable: {name}')
+    return value
+
+
 def upload_function(request):
     """Responds to any HTTP request.
     Args:
@@ -191,14 +199,14 @@ def upload_function(request):
     application_key = request.args.get('applicationKey', None)
     api_key = request.args.get('apiKey', None)
 
-    sensor_mapping = json.loads(request.environ.get("sensor_mapping", "{}"))
+    sensor_mapping = json.loads(os.environ.get("sensor_mapping", "{}"))
     pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
 
-    host = request.environ.get("influxdb_host")
-    port = request.environ.get("influxdb_port")
-    user = request.environ.get("influxdb_user")
-    password = request.environ.get("influxdb_password")
-    dbname = request.environ.get("influxdb_database")
+    host = get_env("influxdb_host")
+    port = get_env("influxdb_port")
+    user = get_env("influxdb_user")
+    password = get_env("influxdb_password")
+    dbname = get_env("influxdb_database")
 
     return process_data(sensor_mapping, application_key, api_key, host, port, user, password, dbname)
 
