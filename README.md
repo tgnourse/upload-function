@@ -5,8 +5,8 @@ one case, back out again).
 | Directory | Language | Entry point | What it does |
 |---|---|---|---|
 | `/` (root) | Node.js | `uploadFunction` | Receives temperature/humidity/pressure readings from sensors via HTTP. |
-| `radio/` | Node.js | `uploadFunction` | Receives atmospheric noise levels from radio receivers via HTTP. |
-| `wspr/` | Python | `upload_function` | Receives [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
+| `radio/` | Node.js | `uploadFunction` | **Retired (May 2020).** Received atmospheric noise levels from radio receivers via HTTP. |
+| `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
 | `signals-thermometer/` | Python | `upload_function` | Pulls probe temperatures for a ThermoWorks Signals thermometer from its Firebase backend. |
 | `temp-led/` | Python | `get_function` | Reads the latest value for a sensor (or PurpleAir PM2.5) and returns an RGB color for an LED indicator. |
@@ -28,12 +28,21 @@ Some functions take additional environment variables:
 * `api_key` (`signals-thermometer`): The Firebase web API key used to log in.
 
 ## Deploying
-Each directory is deployed as its own function. Something along these lines:
+Each directory is deployed as its own 1st gen function in project `iot-data-storage`, region `us-central1`. For
+example, this is how `ambient-weather` was last deployed:
 ```shell
-gcloud functions deploy upload --source=. --entry-point=uploadFunction \
-    --runtime=nodejs20 --trigger-http --env-vars-file=env.yaml
+gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-central1 \
+    --no-gen2 --runtime=python312 --entry-point=upload_function --trigger-http \
+    --source=ambient-weather
 ```
-For the Python functions, use the directory as `--source`, a Python runtime, and the entry point from the table above.
+* Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
+  variables; leaving them out keeps the existing ones.
+* `upload`, `temp-led` and `signals-thermometer` are still on the retired `nodejs8`/`python37` runtimes. They keep
+  running, but redeploying requires a current runtime, and the Python ones first need to read config from
+  `os.environ` instead of `request.environ` (see `ambient-weather/main.py`).
+
+### Retired functions
+`radio/` (`upload_radio`) and `wspr/` were turned down in May 2020. Their docs below are kept for reference.
 
 ## Functions
 
@@ -57,7 +66,7 @@ curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload\
   nulling the values.
 * `vapor_density` (g/m³) is calculated from the temperature and humidity.
 
-### Radio upload (`radio/`)
+### Radio upload (`radio/`, retired)
 Writes to the `atmospheric_noise` measurement.
 
 ```shell
@@ -73,7 +82,7 @@ curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload_radio\
 
 Also accepts optional `c2_level` (field) and `grid` (tag).
 
-### WSPR (`wspr/`)
+### WSPR (`wspr/`, retired)
 Writes to the `spot` measurement. A single spot can be sent with a GET:
 
 ```shell

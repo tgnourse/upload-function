@@ -16,3 +16,9 @@
 node_modules
 .idea
 README.md
+CLAUDE.md
+
+# Never upload local secrets.
+.env
+.env.*
+SECRETS_INVENTORY.md
