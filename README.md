@@ -113,5 +113,8 @@ pip install -r requirements.txt flask requests
 python3 main.py
 curl 'http://localhost:8000/?applicationKey=...&apiKey=...'
 ```
-The Python functions read configuration from `request.environ` rather than `os.environ`, so for local runs the values
-need to be injected into the request in the `__main__` block (`temp-led` has placeholders showing how).
+`ambient-weather` reads its configuration from `os.environ`, so set the environment variables inline when starting it.
+The other Python functions still read `request.environ` (which only works on the retired `python37` runtime), so for
+local runs the values need to be injected into the request in the `__main__` block (`temp-led` has placeholders
+showing how). Alternatively, run any of them with
+`functions-framework --target=<entry point>` to match the Cloud Functions environment.
