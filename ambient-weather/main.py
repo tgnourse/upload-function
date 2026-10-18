@@ -75,7 +75,7 @@ def transform_indoor(mac, location, name, sensor_name, station_data):
 
     humidity = None
     if station_data.get('humidityin'):
-        float(station_data.get('humidityin'))
+        humidity = float(station_data.get('humidityin'))
 
     vapor_density_value = None
     if humidity and temperature:
