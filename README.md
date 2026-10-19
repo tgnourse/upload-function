@@ -8,6 +8,7 @@ one case, back out again).
 | `radio/` | Node.js | `uploadFunction` | **Retired (May 2020).** Received atmospheric noise levels from radio receivers via HTTP. |
 | `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
+| `fireboard/` | Python | `upload_function` | Pulls the latest probe, ambient and humidity readings from the [FireBoard API](https://docs.fireboard.io/app/app-api/) every minute. |
 | `temp-led/` | Python | `get_function` | Reads the latest temperature for a sensor and returns an RGB color for an LED indicator. |
 
 ## Configuration
@@ -43,6 +44,16 @@ service, so it no longer appears in `gcloud functions list`. Deploy it with:
 ```shell
 gcloud run deploy ambient-weather --project=iot-data-storage --region=us-central1 \
     --source=ambient-weather --function=upload_function --base-image=python312
+```
+
+`fireboard` is a private 2nd gen function (Cloud Scheduler calls it with an OIDC token) whose FireBoard token and
+InfluxDB password come from Secret Manager. Its full deploy command, including the env vars and secrets, is:
+```shell
+gcloud functions deploy fireboard --project=iot-data-storage --region=us-central1 \
+    --gen2 --runtime=python312 --entry-point=upload_function --trigger-http --no-allow-unauthenticated \
+    --source=fireboard --service-account=fireboard-fn@iot-data-storage.iam.gserviceaccount.com \
+    --set-env-vars=influxdb_host=35.238.159.210,influxdb_port=8086,influxdb_user=uploadfunction,influxdb_database=temperatures \
+    --set-secrets=fireboard_token=fireboard-token:latest,influxdb_password=influxdb-uploadfunction-password:latest
 ```
 
 * Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
@@ -111,6 +122,22 @@ account it writes `environment_sensor` points for the outdoor sensors (`_outdoor
 radiation), the indoor console (`_indoor`, including pressure) and any extra sensors 1–7 (`_1` … `_7`). Devices not in
 `sensor_mapping` are named `<location> - <name>`. Note the Ambient Weather API is rate limited to 1 request/second per
 API key.
+
+### FireBoard (`fireboard/`)
+Called every minute by the Cloud Scheduler job `tommy_fireboard`. Makes one `GET /api/v1/devices.json` call per run
+(the API allows 17 calls per 5 minutes per user and only returns readings less than 60 seconds old) and writes
+`environment_sensor` points:
+* One point per temperature channel, `sensor_id` = `fireboard_<device title>_<probe label>` (slugified), with tags
+  `name`, `label`, `model` and `original_sensor_id` = `<hardware_id>_<channel>`. Renaming a probe in the FireBoard app
+  starts a new `sensor_id`; `original_sensor_id` stays the same for the physical channel.
+* Temperatures are converted to °F. Humidity readings (`degreetype` 3, undocumented) are added to the device's
+  channel 1 point (the Beacon's ambient sensor) with `vapor_density`, along with `battery_status` (0–1) and
+  `signal_level` (dBm).
+* Unplugged probes and powered-off FireBoards return nothing, so nothing is written.
+
+Get an API token with `POST https://fireboard.io/api/rest-auth/login/` (`username`, `password`; a `User-Agent` header
+is required) and put it in `.env` as `FIREBOARD_TOKEN`. For local runs, set `fireboard_token` and, to keep test data
+separate, `sensor_id_prefix=test_fireboard`.
 
 ### Temperature LED (`temp-led/`)
 Called with `?id=<n>` and returns a color (as a Python dict string, e.g. `{'red': 0, 'green': 255, 'blue': 0}`, or a
