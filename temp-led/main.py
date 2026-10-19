@@ -1,9 +1,17 @@
 from influxdb import InfluxDBClient
+import os
 import pprint
 import requests
 
 TYPE_TEMPERATURE = 'temperature'
 TYPE_AIR_QUALITY = 'air_quality'
+
+
+def get_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f'Missing required environment variable: {name}')
+    return value
 
 
 def get_data(host, port, user, password, dbname, sensor):
@@ -111,11 +119,11 @@ def get_function(request):
     config = configurations[id]
 
     if config['type'] == TYPE_TEMPERATURE:
-        influx_host = request.environ.get("influxdb_host")
-        influx_port = request.environ.get("influxdb_port")
-        influx_user = request.environ.get("influxdb_user")
-        influx_password = request.environ.get("influxdb_password")
-        influx_dbname = request.environ.get("influxdb_database")
+        influx_host = get_env("influxdb_host")
+        influx_port = get_env("influxdb_port")
+        influx_user = get_env("influxdb_user")
+        influx_password = get_env("influxdb_password")
+        influx_dbname = get_env("influxdb_database")
         result = get_data(
             influx_host, influx_port, influx_user, influx_password, influx_dbname, config['original_sensor_id']
         )
@@ -152,7 +160,7 @@ def get_function(request):
         return str({'red': 0, 'green': 0, 'blue': 0})  # Off
 
 
-# Debug server that can be called directly.
+# Debug server that can be called directly. Set the influxdb_* environment variables first.
 # python3 main.py
 # curl 'http://localhost:8000/?id=1'
 if __name__ == "__main__":
@@ -161,12 +169,6 @@ if __name__ == "__main__":
 
     @app.route('/')
     def index():
-        # Note that you'll need to fill these in if needed.
-        request.environ["influxdb_host"] = ""
-        request.environ["influxdb_port"] = ""
-        request.environ["influxdb_user"] = ""
-        request.environ["influxdb_password"] = ""
-        request.environ["influxdb_database"] = ""
         return get_function(request)
 
     app.run('127.0.0.1', 8000, debug=True)
