@@ -27,7 +27,7 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 | `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
 | `ambient-weather` (entry `upload_function`) | `python312` | Active, deployed 10/18/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
 | `signals-thermometer` (entry `upload_function`) | `python37` (retired runtime) | Deployed, but Scheduler job `tommy_thermoworks_signals` **paused since Apr 2024** | Cloud Scheduler | `temperatures` / `signals` | Logs into Thermoworks "smoke-cloud" Firebase, reads the last 50 `SignalTemps/<device_id>` probe readings |
-| `temp-led` (entry `get_function`) | `python37` (retired runtime) | Active, last deployed Sep 2020 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green); `id=2` is PurpleAir PM2.5 → AQI color |
+| `temp-led` (entry `get_function`) | `python312` | Active, deployed 10/19/2026 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green). Configured IDs: `1`, `3`, `4`; `id=2` (PurpleAir air quality) was removed 10/19/2026 after PurpleAir retired its old `/json` endpoint |
 | `wspr` | Python (`wspr/main.py`) | **Turned down 5/27/2020** | Rob's wsprdaemon (`logs.wsprdaemon.org` pointed here) | `wspr` / `wspr` | WSPR spots: GET single spot or POST multi-upload (`allmept` file + `call` + `grid`) mirroring wsprnet.org's API |
 | `upload_radio` | Node.js | **Turned down 5/27/2020** | Rob's KiwiSDR noise logger | `radio` / `radio` | Atmospheric noise: `fft_level`, `rms_level`, `site`, `band`, `receiver`, `maidenhead`, `timestamp_ms` |
 
@@ -71,7 +71,7 @@ so mapping a MAC to a name that already ends in `_indoor` produces `..._indoor_i
 for one of Tommy's devices in production).
 
 Python functions must read these with `os.environ`. `request.environ` only carried them on the retired
-`python37` runtime; `upload` and `ambient-weather` use `os.environ`, `temp-led` and `signals-thermometer` don't yet.
+`python37` runtime; every function except `signals-thermometer` uses `os.environ`.
 
 ## Local development
 
@@ -122,8 +122,8 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 - Use `--no-gen2`; current gcloud defaults to 2nd gen.
 - **Don't pass `--set-env-vars` / `--env-vars-file`**: they replace all existing env vars, including
   `sensor_mapping` and the passwords. Omitting them keeps what's deployed. Leave IAM flags off too.
-- The retired `python37` runtime can't be redeployed. Upgrading `temp-led` or `signals-thermometer` means
-  switching to `python312`, and to `os.environ` first.
+- The retired `python37` runtime can't be redeployed. Upgrading `signals-thermometer` means switching to
+  `python312`, and to `os.environ` first.
 - Always deploy from a function's directory, never the repo root. `.gcloudignore` excludes `.env` and
   `SECRETS_INVENTORY.md` as a backstop.
 - Inspect without leaking secrets: `gcloud functions describe` prints env var **values**, and

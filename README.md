@@ -9,7 +9,7 @@ one case, back out again).
 | `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
 | `signals-thermometer/` | Python | `upload_function` | Pulls probe temperatures for a ThermoWorks Signals thermometer from its Firebase backend. |
-| `temp-led/` | Python | `get_function` | Reads the latest value for a sensor (or PurpleAir PM2.5) and returns an RGB color for an LED indicator. |
+| `temp-led/` | Python | `get_function` | Reads the latest temperature for a sensor and returns an RGB color for an LED indicator. |
 
 ## Configuration
 Every function reads the InfluxDB connection details from environment variables:
@@ -37,8 +37,8 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 ```
 * Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
   variables; leaving them out keeps the existing ones.
-* `upload` and `ambient-weather` run on `python312`. `temp-led` and `signals-thermometer` are still on the retired
-  `python37` runtime. They keep running, but redeploying requires a current runtime, and they first need to read
+* `upload`, `ambient-weather` and `temp-led` run on `python312`. `signals-thermometer` is still on the retired
+  `python37` runtime. It keeps running, but redeploying requires a current runtime, and it first needs to read
   config from `os.environ` instead of `request.environ` (see `ambient-weather/main.py`).
 
 ### Retired functions
@@ -114,7 +114,8 @@ Called with `?id=<n>` and returns a color (as a Python dict string, e.g. `{'red'
 list of 7 of them for the 7-LED config). Configurations are hard coded in `main.py`:
 * Temperature configs look up the latest `temperature` for an `original_sensor_id` and return `min_color`, `max_color`
   or `color` depending on whether it's below `min`, above `max`, or in range.
-* The air quality config fetches PM2.5 from PurpleAir and returns a color matching the EPA AQI band.
+* Configured IDs are `1`, `3` (7-LED) and `4`. `id=2` was a PurpleAir air quality light; it was removed in Oct 2026
+  after PurpleAir retired the endpoint it used. Unknown IDs return a `500`.
 
 ## Running locally
 The Python functions can be run directly as a Flask debug server on `localhost:8000`:
@@ -133,7 +134,7 @@ influxdb_host=... influxdb_port=... influxdb_user=... influxdb_password=... infl
     functions-framework --target=upload_function --port=8090
 curl 'http://localhost:8090/?temperature=70&hum=50&heap=30000&sensor_id=test'
 ```
-`upload` and `ambient-weather` read their configuration from `os.environ`, so set the environment variables inline
-when starting them. `temp-led` and `signals-thermometer` still read `request.environ` (which only works on the retired
-`python37` runtime), so for local runs the values need to be injected into the request in the `__main__` block
-(`temp-led` has placeholders showing how).
+`upload`, `ambient-weather` and `temp-led` read their configuration from `os.environ`, so set the environment
+variables inline when starting them. `signals-thermometer` still reads `request.environ` (which only works on the
+retired `python37` runtime), so for local runs the values need to be injected into the request in its `__main__`
+block.
