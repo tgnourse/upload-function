@@ -44,9 +44,14 @@ def build_point(form, prefix):
     tags = {'sensor_id': f'{prefix}_{slug(color)}', 'color': color.upper()}
     if tilt_id:
         tags['tilt_id'] = tilt_id
-    beer = (form.get('Beer') or '').strip()
+    # The Pico appends its log ID to the beer name, e.g. "2026 Zin Lite,298956"; the app's own posts don't.
+    beer, _, log_id = (form.get('Beer') or '').strip().rpartition(',')
+    if not log_id.isdigit():
+        beer, log_id = (form.get('Beer') or '').strip(), ''
     if beer:
-        tags['beer'] = beer
+        tags['beer'] = beer.strip()
+    if log_id:
+        tags['log_id'] = log_id
 
     return {
         'measurement': MEASUREMENT,
