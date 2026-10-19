@@ -9,6 +9,7 @@ one case, back out again).
 | `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
 | `fireboard/` | Python | `upload_function` | Pulls the latest probe, ambient and humidity readings from the [FireBoard API](https://docs.fireboard.io/app/app-api/) every minute. |
+| `tilt/` | Python | `upload_function` | Receives Tilt Pro hydrometer readings posted by a [Tilt Pico](https://tilthydrometer.com/pages/tilt-pico). |
 | `temp-led/` | Python | `get_function` | Reads the latest temperature for a sensor and returns an RGB color for an LED indicator. |
 
 ## Configuration
@@ -138,6 +139,27 @@ Called every minute by the Cloud Scheduler job `tommy_fireboard`. Makes one `GET
 Get an API token with `POST https://fireboard.io/api/rest-auth/login/` (`username`, `password`; a `User-Agent` header
 is required) and put it in `.env` as `FIREBOARD_TOKEN`. For local runs, set `fireboard_token` and, to keep test data
 separate, `sensor_id_prefix=test_fireboard`.
+
+### Tilt (`tilt/`)
+The Tilt Pico posts to this function as its **custom (3rd-party) cloud URL**, set in the Tilt app. The URL is
+`https://us-central1-iot-data-storage.cloudfunctions.net/tilt?key=<key>`, where the key is the Secret Manager secret
+`tilt-key` (the full URL is saved locally in `.env` as `TILT_CLOUD_URL`). Requests without the right key get a `403`.
+
+Each post is form-encoded (`Timepoint`, `Temp`, `SG`, `Beer`, `Color`, `Comment`; see
+[TiltPico](https://github.com/baronbrew/TiltPico)) and becomes one point in the **`tilt`** measurement (not
+`environment_sensor`):
+* Tags: `sensor_id` = `tilt_<color>`, `color`, `beer` (the batch name set in the Tilt app).
+* Fields: `temperature` (°F), `specific_gravity`, and `brix` (calculated from gravity).
+* Points are timestamped when they arrive; `Timepoint` (a spreadsheet date in the Pico's local time) is ignored.
+
+It's a public 2nd gen function (the Pico can't authenticate any other way). Deploy it with:
+```shell
+gcloud functions deploy tilt --project=iot-data-storage --region=us-central1 \
+  --gen2 --runtime=python312 --entry-point=upload_function --trigger-http --allow-unauthenticated \
+  --source=tilt --service-account=tilt-fn@iot-data-storage.iam.gserviceaccount.com \
+  --set-env-vars=influxdb_host=35.238.159.210,influxdb_port=8086,influxdb_user=uploadfunction,influxdb_database=temperatures \
+  --set-secrets=tilt_key=tilt-key:latest,influxdb_password=influxdb-uploadfunction-password:latest
+```
 
 ### Temperature LED (`temp-led/`)
 Called with `?id=<n>` and returns a color (as a Python dict string, e.g. `{'red': 0, 'green': 255, 'blue': 0}`, or a
