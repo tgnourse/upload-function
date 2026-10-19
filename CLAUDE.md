@@ -24,7 +24,7 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 
 | Function | Runtime | Status | Trigger | Writes to (db / user) | What it does |
 |---|---|---|---|---|---|
-| `upload` (entry `uploadFunction`) | `nodejs8` (retired runtime) | Active, last deployed Jan 2023 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
+| `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
 | `ambient-weather` (entry `upload_function`) | `python312` | Active, deployed 10/18/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
 | `signals-thermometer` (entry `upload_function`) | `python37` (retired runtime) | Deployed, but Scheduler job `tommy_thermoworks_signals` **paused since Apr 2024** | Cloud Scheduler | `temperatures` / `signals` | Logs into Thermoworks "smoke-cloud" Firebase, reads the last 50 `SignalTemps/<device_id>` probe readings |
 | `temp-led` (entry `get_function`) | `python37` (retired runtime) | Active, last deployed Sep 2020 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green); `id=2` is PurpleAir PM2.5 → AQI color |
@@ -71,12 +71,12 @@ so mapping a MAC to a name that already ends in `_indoor` produces `..._indoor_i
 for one of Tommy's devices in production).
 
 Python functions must read these with `os.environ`. `request.environ` only carried them on the retired
-`python37` runtime; `ambient-weather` has been converted, `temp-led` and `signals-thermometer` have not.
+`python37` runtime; `upload` and `ambient-weather` use `os.environ`, `temp-led` and `signals-thermometer` don't yet.
 
 ## Local development
 
-Python functions (`ambient-weather`, `signals-thermometer`, `temp-led`) have a `__main__` dev server on
-`localhost:8000`:
+All functions are Python. `ambient-weather`, `signals-thermometer` and `temp-led` have a `__main__` dev
+server on `localhost:8000`; `upload` doesn't, so run it with `functions-framework --target=upload_function`.
 
 ```bash
 cd ambient-weather
@@ -94,18 +94,15 @@ When testing `ambient-weather` against the real database, set `sensor_mapping` t
 the account to a `test_ambient_N` name. The test points then land in separate series (they still carry
 the real `original_sensor_id`, `mac` and `location` tags, so filter on `sensor_id`, not those).
 
-Node functions were last developed (2018–2019) with the now-deprecated `@google-cloud/functions-emulator`
-on Node v6.14.4 (`functions-emulator start`, `deploy uploadFunction --trigger-http`, served at
-`http://localhost:8010/iot-data-storage/us-central1/<fn>`). For new work use
-`npx @google-cloud/functions-framework --target=uploadFunction` instead and upgrade the Node runtime
-— v6 is long unsupported by Cloud Functions.
+For `upload`, test with `sensor_id=test` and an empty `sensor_mapping`; a request with `pressure` also
+creates a `test_pressure` series. The retired `radio/` function is still Node.js.
 
 Clean up test data afterwards (confirm first; the `claude` user can DELETE on `temperatures`). Check the
 match with `SHOW TAG VALUES FROM environment_sensor WITH KEY = sensor_id WHERE sensor_id =~ /^test_/`
 before deleting, and never delete by `mac` or `original_sensor_id` — those match production data too.
 
 ```sql
-DELETE FROM environment_sensor WHERE "sensor_id" = 'test'                -- upload tests
+DELETE FROM environment_sensor WHERE "sensor_id" =~ /^test(_pressure)?$/ -- upload tests
 DELETE FROM environment_sensor WHERE "sensor_id" =~ /^test_ambient_/     -- ambient-weather tests
 DELETE FROM spot WHERE tcall = 'TCALL'                                    -- wspr tests (retired)
 ```
@@ -113,7 +110,8 @@ DELETE FROM spot WHERE tcall = 'TCALL'                                    -- wsp
 ## Deploying
 
 All functions are 1st gen. Until Oct 2026 they were deployed through the GCP console from the Cloud
-Source Repositories mirror. `ambient-weather` was redeployed from the CLI on 10/18/2026 with:
+Source Repositories mirror. `ambient-weather` (10/18/2026) and `upload` (10/19/2026, with
+`--source=upload`) have since been deployed from the CLI with:
 
 ```bash
 gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-central1 \
@@ -124,10 +122,10 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 - Use `--no-gen2`; current gcloud defaults to 2nd gen.
 - **Don't pass `--set-env-vars` / `--env-vars-file`**: they replace all existing env vars, including
   `sensor_mapping` and the passwords. Omitting them keeps what's deployed. Leave IAM flags off too.
-- Retired runtimes (`nodejs8`, `python37`) can't be redeployed. Upgrading `upload`, `temp-led` or
-  `signals-thermometer` means switching to a current runtime, and for the Python ones, to `os.environ` first.
-- `.gcloudignore` excludes `.env` and `SECRETS_INVENTORY.md`; keep it that way before deploying `upload`
-  from the repo root.
+- The retired `python37` runtime can't be redeployed. Upgrading `temp-led` or `signals-thermometer` means
+  switching to `python312`, and to `os.environ` first.
+- Always deploy from a function's directory, never the repo root. `.gcloudignore` excludes `.env` and
+  `SECRETS_INVENTORY.md` as a backstop.
 - Inspect without leaking secrets: `gcloud functions describe` prints env var **values**, and
   `gcloud scheduler jobs list --format=json` prints URLs with API keys and passwords in the query string.
   Filter those out before showing output.

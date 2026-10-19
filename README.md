@@ -4,7 +4,7 @@ one case, back out again).
 
 | Directory | Language | Entry point | What it does |
 |---|---|---|---|
-| `/` (root) | Node.js | `uploadFunction` | Receives temperature/humidity/pressure readings from sensors via HTTP. |
+| `upload/` | Python | `upload_function` | Receives temperature/humidity/pressure readings from sensors via HTTP. |
 | `radio/` | Node.js | `uploadFunction` | **Retired (May 2020).** Received atmospheric noise levels from radio receivers via HTTP. |
 | `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
@@ -21,15 +21,15 @@ Every function reads the InfluxDB connection details from environment variables:
 * `influxdb_database`: The database name.
 
 Some functions take additional environment variables:
-* `sensor_mapping` (root, `ambient-weather`): A JSON object mapping a raw sensor ID to a friendlier name, which is
-  written as the `sensor_id` tag (the raw ID is kept in `original_sensor_id`). See `sensor_mapping.json` and
+* `sensor_mapping` (`upload`, `ambient-weather`): A JSON object mapping a raw sensor ID to a friendlier name, which is
+  written as the `sensor_id` tag (the raw ID is kept in `original_sensor_id`). See `upload/sensor_mapping.json` and
   `ambient-weather/sensor_mapping.json` for the current mappings; these files are just a record of what is configured
   in production, the functions don't read them directly.
 * `api_key` (`signals-thermometer`): The Firebase web API key used to log in.
 
 ## Deploying
 Each directory is deployed as its own 1st gen function in project `iot-data-storage`, region `us-central1`. For
-example, this is how `ambient-weather` was last deployed:
+example, this is how `ambient-weather` was last deployed (`upload` is the same with `--source=upload`):
 ```shell
 gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-central1 \
     --no-gen2 --runtime=python312 --entry-point=upload_function --trigger-http \
@@ -37,16 +37,16 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 ```
 * Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
   variables; leaving them out keeps the existing ones.
-* `upload`, `temp-led` and `signals-thermometer` are still on the retired `nodejs8`/`python37` runtimes. They keep
-  running, but redeploying requires a current runtime, and the Python ones first need to read config from
-  `os.environ` instead of `request.environ` (see `ambient-weather/main.py`).
+* `upload` and `ambient-weather` run on `python312`. `temp-led` and `signals-thermometer` are still on the retired
+  `python37` runtime. They keep running, but redeploying requires a current runtime, and they first need to read
+  config from `os.environ` instead of `request.environ` (see `ambient-weather/main.py`).
 
 ### Retired functions
 `radio/` (`upload_radio`) and `wspr/` were turned down in May 2020. Their docs below are kept for reference.
 
 ## Functions
 
-### Environmental upload (root)
+### Environmental upload (`upload/`)
 Writes to the `environment_sensor` measurement.
 
 ```shell
@@ -65,6 +65,8 @@ curl http://[your_cloud_function_subdomain].cloudfunctions.net/upload\
   `pressure_temperature` of exactly `55.13` is treated as "no reading", since some devices send that instead of
   nulling the values.
 * `vapor_density` (g/m³) is calculated from the temperature and humidity.
+* Missing values are left out of the point. Non-numeric values get a `400` response and nothing is written.
+* This was a Node.js function (`index.js`) until Oct 2026; it was ported to Python with the same behavior.
 
 ### Radio upload (`radio/`, retired)
 Writes to the `atmospheric_noise` measurement.
@@ -122,8 +124,16 @@ pip install -r requirements.txt flask requests
 python3 main.py
 curl 'http://localhost:8000/?applicationKey=...&apiKey=...'
 ```
-`ambient-weather` reads its configuration from `os.environ`, so set the environment variables inline when starting it.
-The other Python functions still read `request.environ` (which only works on the retired `python37` runtime), so for
-local runs the values need to be injected into the request in the `__main__` block (`temp-led` has placeholders
-showing how). Alternatively, run any of them with
-`functions-framework --target=<entry point>` to match the Cloud Functions environment.
+`upload` has no `__main__` block; run it with `functions-framework`, which also matches the Cloud Functions
+environment for the others:
+```shell
+cd upload
+pip install -r requirements.txt functions-framework
+influxdb_host=... influxdb_port=... influxdb_user=... influxdb_password=... influxdb_database=... \
+    functions-framework --target=upload_function --port=8090
+curl 'http://localhost:8090/?temperature=70&hum=50&heap=30000&sensor_id=test'
+```
+`upload` and `ambient-weather` read their configuration from `os.environ`, so set the environment variables inline
+when starting them. `temp-led` and `signals-thermometer` still read `request.environ` (which only works on the retired
+`python37` runtime), so for local runs the values need to be injected into the request in the `__main__` block
+(`temp-led` has placeholders showing how).
