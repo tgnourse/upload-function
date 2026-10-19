@@ -1,10 +1,8 @@
 from influxdb import InfluxDBClient
 import os
 import pprint
-import requests
 
 TYPE_TEMPERATURE = 'temperature'
-TYPE_AIR_QUALITY = 'air_quality'
 
 
 def get_env(name):
@@ -109,11 +107,6 @@ def get_function(request):
                     {'red': 0, 'green': 255, 'blue': 0},
                 ]
         },
-        # Local Air Quality
-        '2': {
-            'type': TYPE_AIR_QUALITY,
-            'url': 'https://www.purpleair.com/json?show=65697',
-        },
     }
 
     config = configurations[id]
@@ -137,25 +130,6 @@ def get_function(request):
         elif temperature > configurations[id]['max']:
             return str(configurations[id]['max_color'])
         return str(configurations[id]['color'])
-    elif config['type'] == TYPE_AIR_QUALITY:
-        # AQI Calculation: https://www3.epa.gov/airnow/aqi-technical-assistance-document-sept2018.pdf
-        r = requests.get(config['url'])
-        result = r.json()
-
-        pprint.pprint(result)
-
-        p_2_5_um = float(result['results'][0]['PM2_5Value'])
-
-        if p_2_5_um <= 12.0:
-            return str({'red': 0, 'green': 255, 'blue': 0})  # Green
-        elif p_2_5_um <= 35.4:
-            return str({'red': 255, 'green': 200, 'blue': 0})  # Yellow
-        elif p_2_5_um <= 55.4:
-            return str({'red': 255, 'green': 70, 'blue': 0})  # Orange
-        elif p_2_5_um <= 150.4:
-            return str({'red': 255, 'green': 0, 'blue': 0})  # Red
-        else:
-            return str({'red': 255, 'green': 0, 'blue': 255})  # Purple
     else:
         return str({'red': 0, 'green': 0, 'blue': 0})  # Off
 
