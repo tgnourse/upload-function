@@ -26,7 +26,6 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 |---|---|---|---|---|---|
 | `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
 | `ambient-weather` (entry `upload_function`) | `python312` | Active, deployed 10/18/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
-| `signals-thermometer` (entry `upload_function`) | `python37` (retired runtime) | Deployed, but Scheduler job `tommy_thermoworks_signals` **paused since Apr 2024** | Cloud Scheduler | `temperatures` / `signals` | Logs into Thermoworks "smoke-cloud" Firebase, reads the last 50 `SignalTemps/<device_id>` probe readings |
 | `temp-led` (entry `get_function`) | `python312` | Active, deployed 10/19/2026 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green). Configured IDs: `1`, `3`, `4`; `id=2` (PurpleAir air quality) was removed 10/19/2026 after PurpleAir retired its old `/json` endpoint |
 | `wspr` | Python (`wspr/main.py`) | **Turned down 5/27/2020** | Rob's wsprdaemon (`logs.wsprdaemon.org` pointed here) | `wspr` / `wspr` | WSPR spots: GET single spot or POST multi-upload (`allmept` file + `call` + `grid`) mirroring wsprnet.org's API |
 | `upload_radio` | Node.js | **Turned down 5/27/2020** | Rob's KiwiSDR noise logger | `radio` / `radio` | Atmospheric noise: `fft_level`, `rms_level`, `site`, `band`, `receiver`, `maidenhead`, `timestamp_ms` |
@@ -40,9 +39,6 @@ curl "https://us-central1-iot-data-storage.cloudfunctions.net/upload?temperature
 # ambient-weather — keys are passed as query params by Cloud Scheduler
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/ambient-weather?apiKey=$AMBIENT_API_KEY&applicationKey=$AMBIENT_APPLICATION_KEY"
 
-# signals-thermometer
-curl "https://us-central1-iot-data-storage.cloudfunctions.net/signals-thermometer?email=$THERMOWORKS_EMAIL&password=$THERMOWORKS_PASSWORD&device_id=84:0d:8e:23:c7:9e&device_name=tgnourse_signals"
-
 # temp-led
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/temp-led?id=1"
 
@@ -53,7 +49,7 @@ curl "https://us-central1-iot-data-storage.cloudfunctions.net/wspr?rcall=KPH&rgr
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/upload_radio?fft_level=-160.5&rms_level=-170.3&site=KPH&band=630&receiver=KiwiSDR15&timestamp_ms=1557379274758"
 ```
 
-Note: `ambient-weather` and `signals-thermometer` receive credentials in the URL query string (visible
+Note: `ambient-weather` receives credentials in the URL query string (visible
 in Scheduler config and logs). Prefer moving them to function env vars / Secret Manager when touching
 that code.
 
@@ -62,20 +58,19 @@ that code.
 | Var | Used by | Notes |
 |---|---|---|
 | `influxdb_host`, `influxdb_port`, `influxdb_user`, `influxdb_password`, `influxdb_database` | all | lowercase names — that's what the code reads |
-| `sensor_mapping` | `upload`, `ambient-weather` | JSON. `upload`: `{"tgnourse1":"under_front_stairs","tgnourse4":"master_bedroom","tgnourse5":"maintenance_closet","tgnourse6":"tommy_closet"}` (Sept 2018). `ambient-weather`: `{"A4:CF:12:A0:32:1C":"tgnourse_house"}`; signals: `{"84:0d:8e:23:c7:9e":"tgnourse_signals"}` |
-| `api_key` (Firebase web key for smoke-cloud) | `signals-thermometer` | Was a hard-coded default in 2020 |
+| `sensor_mapping` | `upload`, `ambient-weather` | JSON. `upload`: `{"tgnourse1":"under_front_stairs","tgnourse4":"master_bedroom","tgnourse5":"maintenance_closet","tgnourse6":"tommy_closet"}` (Sept 2018). `ambient-weather`: `{"A4:CF:12:A0:32:1C":"tgnourse_house"}` |
 
 Mapped devices: when a `sensor_mapping` entry exists, `sensor_id` is the friendly name and the raw ID is
 kept in `original_sensor_id`. `ambient-weather` appends a suffix (`_outdoor`, `_indoor`, `_1`…`_7`) to both,
 so mapping a MAC to a name that already ends in `_indoor` produces `..._indoor_indoor` (this is happening
 for one of Tommy's devices in production).
 
-Python functions must read these with `os.environ`. `request.environ` only carried them on the retired
-`python37` runtime; every function except `signals-thermometer` uses `os.environ`.
+Functions must read these with `os.environ`; `request.environ` only carried them on the retired `python37`
+runtime.
 
 ## Local development
 
-All functions are Python. `ambient-weather`, `signals-thermometer` and `temp-led` have a `__main__` dev
+All functions are Python. `ambient-weather` and `temp-led` have a `__main__` dev
 server on `localhost:8000`; `upload` doesn't, so run it with `functions-framework --target=upload_function`.
 
 ```bash
@@ -122,8 +117,6 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 - Use `--no-gen2`; current gcloud defaults to 2nd gen.
 - **Don't pass `--set-env-vars` / `--env-vars-file`**: they replace all existing env vars, including
   `sensor_mapping` and the passwords. Omitting them keeps what's deployed. Leave IAM flags off too.
-- The retired `python37` runtime can't be redeployed. Upgrading `signals-thermometer` means switching to
-  `python312`, and to `os.environ` first.
 - Always deploy from a function's directory, never the repo root. `.gcloudignore` excludes `.env` and
   `SECRETS_INVENTORY.md` as a backstop.
 - Inspect without leaking secrets: `gcloud functions describe` prints env var **values**, and
@@ -141,10 +134,7 @@ Always ask Tommy before deploying; these functions feed live dashboards.
   outdoor), indoor hub `24:7D:4D:A3:64:EE` ("El Prado Indoor", channels 1–3 and 5–7),
   `24:7D:4D:A3:64:8D` ("Travel Station", channels 1–2) and `FC:F5:C4:98:51:EB` ("Half Moon Bay",
   indoor only; no data since Nov 2024).
-- **Thermoworks Signals** (Firebase project `smoke-cloud`): sign in with
-  `POST https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=<api_key>` →
-  `idToken`; then `https://smoke-cloud.firebaseio.com/signals/<mac>/names.json?auth=<idToken>` for probe
-  names and `.../SignalTemps/<mac>/.json?orderBy="$key"&limitToLast=1&auth=<idToken>` for latest temps.
-  Probes p1–p4 (`Oven`, `CH 2`–`CH 4`); `"---"` means unplugged. Tokens expire in 3600 s.
+- **Thermoworks Signals**: the `signals-thermometer` function and its Scheduler job
+  `tommy_thermoworks_signals` were deleted on 10/19/2026 (thermometer no longer used). Code is in git history.
 - **WSPR** upload formats come from Rob's wsprdaemon (`wsprnet.org/post?function=wspr&...` and
   `meptspots.php` multipart).

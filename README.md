@@ -8,7 +8,6 @@ one case, back out again).
 | `radio/` | Node.js | `uploadFunction` | **Retired (May 2020).** Received atmospheric noise levels from radio receivers via HTTP. |
 | `wspr/` | Python | `upload_function` | **Retired (May 2020).** Received [WSPR](https://en.wikipedia.org/wiki/WSPR_(amateur_radio_software)) spots in the same format as [WSPRnet](http://wsprnet.org/). |
 | `ambient-weather/` | Python | `upload_function` | Pulls the latest readings from the [Ambient Weather API](https://www.ambientweather.com/api.html) for personal weather stations. |
-| `signals-thermometer/` | Python | `upload_function` | Pulls probe temperatures for a ThermoWorks Signals thermometer from its Firebase backend. |
 | `temp-led/` | Python | `get_function` | Reads the latest temperature for a sensor and returns an RGB color for an LED indicator. |
 
 ## Configuration
@@ -25,7 +24,6 @@ Some functions take additional environment variables:
   written as the `sensor_id` tag (the raw ID is kept in `original_sensor_id`). See `upload/sensor_mapping.json` and
   `ambient-weather/sensor_mapping.json` for the current mappings; these files are just a record of what is configured
   in production, the functions don't read them directly.
-* `api_key` (`signals-thermometer`): The Firebase web API key used to log in.
 
 ## Deploying
 Each directory is deployed as its own 1st gen function in project `iot-data-storage`, region `us-central1`. For
@@ -37,12 +35,11 @@ gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-c
 ```
 * Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
   variables; leaving them out keeps the existing ones.
-* `upload`, `ambient-weather` and `temp-led` run on `python312`. `signals-thermometer` is still on the retired
-  `python37` runtime. It keeps running, but redeploying requires a current runtime, and it first needs to read
-  config from `os.environ` instead of `request.environ` (see `ambient-weather/main.py`).
+* All deployed functions (`upload`, `ambient-weather`, `temp-led`) run on `python312`.
 
 ### Retired functions
 `radio/` (`upload_radio`) and `wspr/` were turned down in May 2020. Their docs below are kept for reference.
+`signals-thermometer` (ThermoWorks Signals via Firebase) was deleted in Oct 2026; its code is in git history.
 
 ## Functions
 
@@ -104,11 +101,6 @@ radiation), the indoor console (`_indoor`, including pressure) and any extra sen
 `sensor_mapping` are named `<location> - <name>`. Note the Ambient Weather API is rate limited to 1 request/second per
 API key.
 
-### Signals thermometer (`signals-thermometer/`)
-Meant to be called on a schedule with `?email=...&password=...&device_id=...&device_name=...`. Logs in to Firebase,
-fetches the probe names and the last 50 readings, and writes one `environment_sensor` point per probe reading, named
-`<device_name>-<probe name>`. Probes reading `---` are skipped.
-
 ### Temperature LED (`temp-led/`)
 Called with `?id=<n>` and returns a color (as a Python dict string, e.g. `{'red': 0, 'green': 255, 'blue': 0}`, or a
 list of 7 of them for the 7-LED config). Configurations are hard coded in `main.py`:
@@ -134,7 +126,5 @@ influxdb_host=... influxdb_port=... influxdb_user=... influxdb_password=... infl
     functions-framework --target=upload_function --port=8090
 curl 'http://localhost:8090/?temperature=70&hum=50&heap=30000&sensor_id=test'
 ```
-`upload`, `ambient-weather` and `temp-led` read their configuration from `os.environ`, so set the environment
-variables inline when starting them. `signals-thermometer` still reads `request.environ` (which only works on the
-retired `python37` runtime), so for local runs the values need to be injected into the request in its `__main__`
-block.
+All functions read their configuration from `os.environ`, so set the environment variables inline when starting
+them.
