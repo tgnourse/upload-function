@@ -27,7 +27,7 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 | `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
 | `ambient-weather` (entry `upload_function`) | `python312`, **Cloud Run function (2nd gen)** | Active, upgraded 10/19/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
 | `fireboard` (entry `upload_function`) | `python312`, Cloud Run function (2nd gen), **private** | Active, deployed 10/19/2026 | Cloud Scheduler job `tommy_fireboard`, `* * * * *`, OIDC as `fireboard-scheduler@` | `temperatures` / `uploadfunction` | One `devices.json` call per run → `environment_sensor` points `fireboard_<title>_<label>`; Beacon humidity (`degreetype` 3) + battery/signal on channel 1. Devices (Oct 2026): Glycol Chiller, Indoor Wine Bottle, Unused in Garage (Beacons), Portable (FireBoard 2), Yoder (smoker, idle) |
-| `tilt` (entry `upload_function`) | `python312`, Cloud Run function (2nd gen), public + `?key=` | Active, deployed 10/19/2026 | Tilt Pico custom cloud URL (form-encoded POST) | `temperatures` / `uploadfunction`, measurement **`tilt`** | Tilt Pro readings → `temperature`, `specific_gravity`, `brix`; tags `sensor_id` (`tilt_<color>`), `color`, `beer` |
+| `tilt` (entry `upload_function`) | `python312`, Cloud Run function (2nd gen), public + `?key=` | Active, deployed 10/19/2026 | Tilt Pico custom cloud URL (form-encoded POST) | `temperatures` / `uploadfunction`, measurement **`tilt`** | Tilt Pro readings → `temperature`, `specific_gravity`, `brix`; tags `sensor_id` (`tilt_<color>`), `color`, `tilt_id`, `beer`, `log_id`. Tilts (Oct 2026): RED = 2026 Cab Franc, PURPLE = 2026 Zin Lite, BLACK = 2026 Zin Heavy |
 | `temp-led` (entry `get_function`) | `python312` | Active, deployed 10/19/2026 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green). Configured IDs: `1`, `3`, `4`; `id=2` (PurpleAir air quality) was removed 10/19/2026 after PurpleAir retired its old `/json` endpoint |
 | `wspr` | Python (`wspr/main.py`) | **Turned down 5/27/2020** | Rob's wsprdaemon (`logs.wsprdaemon.org` pointed here) | `wspr` / `wspr` | WSPR spots: GET single spot or POST multi-upload (`allmept` file + `call` + `grid`) mirroring wsprnet.org's API |
 | `upload_radio` | Node.js | **Turned down 5/27/2020** | Rob's KiwiSDR noise logger | `radio` / `radio` | Atmospheric noise: `fft_level`, `rms_level`, `site`, `band`, `receiver`, `maidenhead`, `timestamp_ms` |
@@ -202,8 +202,11 @@ Always ask Tommy before deploying; these functions feed live dashboards.
   (0–1); signal is `device_log.signallevel`. Beacons (`FBRFS`) relay through the Portable FireBoard 2.
 - **Tilt Pico** (Pico W bridge for Tilt hydrometers; firmware https://github.com/baronbrew/TiltPico):
   posts `application/x-www-form-urlencoded` with `Timepoint` (spreadsheet date, local time), `Temp`
-  (°F), `SG` (at 60 °F; Tilt Pros have 4 decimals), `Beer`, `Color`, `Comment`. It has a default cloud URL
-  (Google Sheets) plus two custom ones; ours is in a custom slot. Also serves JSON locally at
+  (°F), `SG` (at 60 °F), `Beer`, `Color`, `Comment`. Observed on 10/19/2026: `Color` is `RED:<tilt id>`, the
+  Pico's `Beer` is `<name>,<log id>` (the phone app's isn't), and SG/Temp arrive rounded to 3 decimals /
+  whole °F even from Tilt Pros. The Pico sends no `User-Agent`; the phone app (Dalvik) sends one reading
+  when a log starts. It has a default cloud URL (Google Sheets) plus custom ones, which must be switched on
+  per log in the TILT PICO Cloud Logging dialog. Also serves JSON locally at
   `tiltpico.local` (not reachable from Tommy's Mac on 10/19/2026).
 - **WSPR** upload formats come from Rob's wsprdaemon (`wsprnet.org/post?function=wspr&...` and
   `meptspots.php` multipart).

@@ -148,9 +148,17 @@ The Tilt Pico posts to this function as its **custom (3rd-party) cloud URL**, se
 Each post is form-encoded (`Timepoint`, `Temp`, `SG`, `Beer`, `Color`, `Comment`; see
 [TiltPico](https://github.com/baronbrew/TiltPico)) and becomes one point in the **`tilt`** measurement (not
 `environment_sensor`):
-* Tags: `sensor_id` = `tilt_<color>`, `color`, `beer` (the batch name set in the Tilt app).
+* Tags: `sensor_id` = `tilt_<color>`, `color`, `tilt_id`, `beer` (the batch name set in the Tilt app) and `log_id`.
+  In practice the Pico sends `Color` as `RED:CAFD39B487D5` (color and Tilt ID) and `Beer` as `2026 Cab Franc,298955`
+  (batch name and log ID); both are split into separate tags.
 * Fields: `temperature` (°F), `specific_gravity`, and `brix` (calculated from gravity).
 * Points are timestamped when they arrive; `Timepoint` (a spreadsheet date in the Pico's local time) is ignored.
+* Gravity arrives rounded to 3 decimals and temperature to whole degrees, even from Tilt Pros.
+
+The URL only gets used once it's switched on for a log: save it under the Tilt's **3rd party cloud logging**
+setting, then start (or restart) that Tilt's log on the Pico and enable it in the **TILT PICO Cloud Logging**
+dialog. Starting a log makes the phone app send one reading itself; after that the Pico posts each Tilt on its own
+logging interval (about every 15 minutes).
 
 It's a public 2nd gen function (the Pico can't authenticate any other way). Deploy it with:
 ```shell
