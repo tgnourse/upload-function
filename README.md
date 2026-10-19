@@ -26,16 +26,27 @@ Some functions take additional environment variables:
   in production, the functions don't read them directly.
 
 ## Deploying
-Each directory is deployed as its own 1st gen function in project `iot-data-storage`, region `us-central1`. For
-example, this is how `ambient-weather` was last deployed (`upload` is the same with `--source=upload`):
+Each directory is deployed separately in project `iot-data-storage`, region `us-central1`, on `python312`. All of
+them are reached at `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`.
+
+`upload` and `temp-led` are **1st gen** Cloud Functions, because the Wemos sensors and the LED Arduino call them over
+plain HTTP, and 2nd gen redirects HTTP to HTTPS (which the devices can't follow). Deploy them with:
 ```shell
-gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-central1 \
+gcloud functions deploy upload --project=iot-data-storage --region=us-central1 \
     --no-gen2 --runtime=python312 --entry-point=upload_function --trigger-http \
-    --source=ambient-weather
+    --source=upload
 ```
+(`temp-led`: `--entry-point=get_function --source=temp-led`.)
+
+`ambient-weather` was upgraded to a Cloud Run function (2nd gen) in Oct 2026 and is now managed as a Cloud Run
+service, so it no longer appears in `gcloud functions list`. Deploy it with:
+```shell
+gcloud run deploy ambient-weather --project=iot-data-storage --region=us-central1 \
+    --source=ambient-weather --function=upload_function --base-image=python312
+```
+
 * Don't pass `--set-env-vars` or `--env-vars-file` unless you mean to replace **all** of the function's environment
   variables; leaving them out keeps the existing ones.
-* All deployed functions (`upload`, `ambient-weather`, `temp-led`) run on `python312`.
 
 ### Retired functions
 `radio/` (`upload_radio`) and `wspr/` were turned down in May 2020. Their docs below are kept for reference.

@@ -25,7 +25,7 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 | Function | Runtime | Status | Trigger | Writes to (db / user) | What it does |
 |---|---|---|---|---|---|
 | `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
-| `ambient-weather` (entry `upload_function`) | `python312` | Active, deployed 10/18/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
+| `ambient-weather` (entry `upload_function`) | `python312`, **Cloud Run function (2nd gen)** | Active, upgraded 10/19/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
 | `temp-led` (entry `get_function`) | `python312` | Active, deployed 10/19/2026 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green). Configured IDs: `1`, `3`, `4`; `id=2` (PurpleAir air quality) was removed 10/19/2026 after PurpleAir retired its old `/json` endpoint |
 | `wspr` | Python (`wspr/main.py`) | **Turned down 5/27/2020** | Rob's wsprdaemon (`logs.wsprdaemon.org` pointed here) | `wspr` / `wspr` | WSPR spots: GET single spot or POST multi-upload (`allmept` file + `call` + `grid`) mirroring wsprnet.org's API |
 | `upload_radio` | Node.js | **Turned down 5/27/2020** | Rob's KiwiSDR noise logger | `radio` / `radio` | Atmospheric noise: `fft_level`, `rms_level`, `site`, `band`, `receiver`, `maidenhead`, `timestamp_ms` |
@@ -104,22 +104,46 @@ DELETE FROM spot WHERE tcall = 'TCALL'                                    -- wsp
 
 ## Deploying
 
-All functions are 1st gen. Until Oct 2026 they were deployed through the GCP console from the Cloud
-Source Repositories mirror. `ambient-weather` (10/18/2026) and `upload` (10/19/2026, with
-`--source=upload`) have since been deployed from the CLI with:
+Until Oct 2026 functions were deployed through the GCP console from the Cloud Source Repositories
+mirror. They're now deployed from the CLI, from each function's directory.
+
+**`upload` and `temp-led` must stay 1st gen** (or sit behind something that accepts plain HTTP). The
+Wemos sensors (`~/Projects/wemos`, `conn:connect(80, HOST)`) and the LED Arduino
+(`~/Projects/arduino/temp-led`, `client.connect(host, 80)`) send plain HTTP to port 80. 1st gen
+functions are `SECURE_OPTIONAL` and serve it; 2nd gen returns `302` to `https://`, which the devices
+don't follow. Verified with a throwaway 2nd gen function on 10/19/2026.
 
 ```bash
-gcloud functions deploy ambient-weather --project=iot-data-storage --region=us-central1 \
+gcloud functions deploy upload --project=iot-data-storage --region=us-central1 \
   --no-gen2 --runtime=python312 --entry-point=upload_function --trigger-http \
-  --source=ambient-weather
+  --source=upload
+# temp-led: --entry-point=get_function --source=temp-led
 ```
 
 - Use `--no-gen2`; current gcloud defaults to 2nd gen.
+
+**`ambient-weather` is a Cloud Run function (2nd gen).** It was upgraded on 10/19/2026 with
+`gcloud functions upgrade ambient-weather --setup-config` → `--redirect-traffic` → `--commit`. The commit
+detaches it from the Cloud Functions API, so it's now a Cloud Run service: `gcloud functions list` /
+`describe` / `logs read` don't see it. The `cloudfunctions.net` URL (which Cloud Scheduler calls over
+HTTPS) still works, and it's also at `https://ambient-weather-bgdddlrosa-uc.a.run.app`.
+
+```bash
+# Deploy (not yet exercised since the upgrade; check env vars are kept afterwards)
+gcloud run deploy ambient-weather --project=iot-data-storage --region=us-central1 \
+  --source=ambient-weather --function=upload_function --base-image=python312
+
+# Logs (don't print httpRequest.requestUrl, it has the API keys)
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="ambient-weather"' \
+  --project=iot-data-storage --limit=20 --format='value(timestamp,httpRequest.status,textPayload)'
+```
+
 - **Don't pass `--set-env-vars` / `--env-vars-file`**: they replace all existing env vars, including
   `sensor_mapping` and the passwords. Omitting them keeps what's deployed. Leave IAM flags off too.
 - Always deploy from a function's directory, never the repo root. `.gcloudignore` excludes `.env` and
   `SECRETS_INVENTORY.md` as a backstop.
-- Inspect without leaking secrets: `gcloud functions describe` prints env var **values**, and
+- Inspect without leaking secrets: `gcloud functions describe` and `gcloud run services describe` print
+  env var **values**, and
   `gcloud scheduler jobs list --format=json` prints URLs with API keys and passwords in the query string.
   Filter those out before showing output.
 - Rollback: redeploy the previous commit with the same command (old runtime versions aren't available).
