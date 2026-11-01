@@ -209,6 +209,9 @@ Always ask Tommy before deploying; these functions feed live dashboards.
   app shares this budget; going over blocks for ~5 minutes). `latest_temps` only includes readings < 60 s
   old. `degreetype`: 1 = °C, 2 = °F, 3 = humidity % (undocumented). Battery is `device_log.vBattPer`
   (0–1); signal is `device_log.signallevel`. Beacons (`FBRFS`) relay through the Portable FireBoard 2.
+  On the night DST ended (2026-10-31, from 23:00 PDT) the API stamped readings an hour in the future;
+  `fireboard` now uses the current time when `created` is > 5 min ahead (logged as "… ahead; using …"),
+  and that night's 340 shifted points were moved back an hour.
 - **Tilt Pico** (Pico W bridge for Tilt hydrometers; firmware https://github.com/baronbrew/TiltPico):
   posts `application/x-www-form-urlencoded` with `Timepoint` (spreadsheet date, local time), `Temp`
   (°F), `SG` (at 60 °F), `Beer`, `Color`, `Comment`. Observed on 10/19/2026: `Color` is `RED:<tilt id>`, the

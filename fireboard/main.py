@@ -9,6 +9,7 @@ meant to be called once a minute and makes a single devices.json call per run.
 import os
 import pprint
 import re
+from datetime import datetime, timedelta, timezone
 import requests
 from influxdb import InfluxDBClient
 
@@ -53,6 +54,20 @@ def to_fahrenheit(temp, degreetype):
     return temp
 
 
+def reading_time(created, now=None):
+    """Returns the reading's timestamp, or now if FireBoard's is in the future.
+
+    latest_temps only has readings under 60 s old, so now is close. FireBoard stamped readings an hour
+    ahead from 23:00 PDT on the night DST ended (2026-10-31).
+    """
+    now = now or datetime.now(timezone.utc)
+    stamp = datetime.fromisoformat(created.replace('Z', '+00:00'))
+    if stamp - now > timedelta(minutes=5):
+        print(f'FireBoard timestamp {created} is {stamp - now} ahead; using {now.isoformat()}')
+        return now.isoformat()
+    return created
+
+
 def transform_device(device, prefix):
     labels = {c['channel']: c['channel_label'] for c in device.get('channels') or []}
     device_log = device.get('device_log') or {}
@@ -86,7 +101,7 @@ def transform_device(device, prefix):
                 'label': label,
                 'model': device.get('model_name') or device.get('model'),
             },
-            'time': reading['created'],
+            'time': reading_time(reading['created']),
             'fields': fields,
         })
     return points
