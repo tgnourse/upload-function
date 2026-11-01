@@ -1,7 +1,8 @@
 # upload-function — Cloud Functions for the IoT data platform
 
 HTTP Cloud Functions in GCP project `iot-data-storage` (region `us-central1`) that receive or pull
-sensor data and write it into InfluxDB 1.x (`influxdb-2-vm`, `35.238.159.210:8086`, self-signed HTTPS).
+sensor data and write it into InfluxDB 1.13 (`influxdb-5-vm`, Debian 12, `35.238.159.210:8086`, self-signed HTTPS;
+replaced `influxdb-2-vm` on 11/1/2026).
 Grafana at grafana.int8.com reads the results. Repo: `github.com/tgnourse/upload-function`, mirrored
 into Cloud Source Repositories as `upload-function` (the GitHub repo became the source on 9/20/2018).
 Console deploys before Oct 2026 pulled code from that mirror's `master`.
