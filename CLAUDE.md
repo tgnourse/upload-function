@@ -141,8 +141,8 @@ detaches it from the Cloud Functions API, so it's now a Cloud Run service: `gclo
 `cloudfunctions.net` URL also still works). Since 11/1/2026 it's **private**: runtime SA
 `ambient-weather-fn@` (reads secrets `ambient-weather-accounts` and `influxdb-uploadfunction-password`),
 and only `ambient-weather-scheduler@` has `roles/run.invoker`. The Scheduler jobs call the `run.app` URL
-with an OIDC token whose audience is that URL. `influxdb_password` is still a plain env var (same value
-as the secret).
+with an OIDC token whose audience is that URL. `influxdb_password` also comes from the secret (since
+11/1/2026); the other `influxdb_*` vars and `sensor_mapping` are plain env vars.
 
 ```bash
 # Deploy (env vars, secrets, service account and IAM are kept when these flags are omitted)
