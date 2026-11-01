@@ -26,7 +26,7 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 | Function | Runtime | Status | Trigger | Writes to (db / user) | What it does |
 |---|---|---|---|---|---|
 | `upload` (`upload/main.py`, entry `upload_function`) | `python312` (ported from Node.js `index.js`) | Active, deployed 10/19/2026 | Wemos sensors, GET every 300 s | `temperatures` / `uploadfunction` | Stores `temperature`, `hum`, `heap`, `ip`, `ssid`, `sensor_id`; renames IDs via `sensor_mapping` |
-| `ambient-weather` (entry `upload_function`) | `python312`, **Cloud Run function (2nd gen)** | Active, upgraded 10/19/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
+| `ambient-weather` (entry `upload_function`) | `python312`, **Cloud Run function (2nd gen)**, **private** | Active, upgraded 10/19/2026, private since 11/1/2026 | Cloud Scheduler jobs `tommy_ambient_weather`, `garrett_ambient_weather`, `nick_ambient_weather`, each `*/5 * * * *`, `?account=<name>`, OIDC as `ambient-weather-scheduler@` | `temperatures` / `uploadfunction` | Pulls Ambient Weather API (`/v1/devices`) for an account, maps MAC → sensor name |
 | `fireboard` (entry `upload_function`) | `python312`, Cloud Run function (2nd gen), **private** | Active, deployed 10/19/2026 | Cloud Scheduler job `tommy_fireboard`, `* * * * *`, OIDC as `fireboard-scheduler@` | `temperatures` / `uploadfunction` | One `devices.json` call per run → `environment_sensor` points `fireboard_<title>_<label>`; Beacon humidity (`degreetype` 3) + battery/signal on channel 1. Devices (Oct 2026): Glycol Chiller, Indoor Wine Bottle, Unused in Garage (Beacons), Portable (FireBoard 2), Yoder (smoker, idle) |
 | `tilt` (entry `upload_function`) | `python312`, Cloud Run function (2nd gen), public + `?key=` | Active, deployed 10/19/2026 | Tilt Pico custom cloud URL (form-encoded POST) | `temperatures` / `uploadfunction`, measurement **`tilt`** | Tilt Pro readings → `temperature`, `specific_gravity`, `brix`; tags `sensor_id` (`tilt_<color>`), `color`, `tilt_id`, `beer`, `log_id`. Tilts (Oct 2026): RED = 2026 Cab Franc, PURPLE = 2026 Zin Lite, BLACK = 2026 Zin Heavy |
 | `temp-led` (entry `get_function`) | `python312` | Active, deployed 10/19/2026 | Arduino polls every 60 s | reads `temperatures` / `wemos` | `?id=N` → color as a Python dict string (`{'red': …, 'green': …, 'blue': …}`, or a list of 7 for the 7-LED config). Configs are hard coded in `main.py`; e.g. `id=1` uses the LAST temperature of `original_sensor_id` `24:7D:4D:A3:64:EE_1` (<66 °F blue, >74 °F red, else green). Configured IDs: `1`, `3`, `4`; `id=2` (PurpleAir air quality) was removed 10/19/2026 after PurpleAir retired its old `/json` endpoint |
@@ -39,8 +39,8 @@ Base URL: `https://us-central1-iot-data-storage.cloudfunctions.net/<name>`
 # upload (Wemos) — query params mirror the Dweet-style GET the Lua code builds
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/upload?temperature=81.3&hum=44.7&heap=33752&ip=192.168.1.132&ssid=Blinky&sensor_id=test"
 
-# ambient-weather — keys are passed as query params by Cloud Scheduler
-curl "https://us-central1-iot-data-storage.cloudfunctions.net/ambient-weather?apiKey=$AMBIENT_API_KEY&applicationKey=$AMBIENT_APPLICATION_KEY"
+# ambient-weather — private; ?account= picks a key pair from the ambient-weather-accounts secret
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" "https://ambient-weather-bgdddlrosa-uc.a.run.app/?account=tommy"
 
 # temp-led
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/temp-led?id=1"
@@ -52,9 +52,8 @@ curl "https://us-central1-iot-data-storage.cloudfunctions.net/wspr?rcall=KPH&rgr
 curl "https://us-central1-iot-data-storage.cloudfunctions.net/upload_radio?fft_level=-160.5&rms_level=-170.3&site=KPH&band=630&receiver=KiwiSDR15&timestamp_ms=1557379274758"
 ```
 
-Note: `ambient-weather` receives credentials in the URL query string (visible
-in Scheduler config and logs). Prefer moving them to function env vars / Secret Manager when touching
-that code.
+Until 11/1/2026 `ambient-weather` took the Ambient keys as `apiKey`/`applicationKey` query params (visible in
+Scheduler config and request logs). Those are now ignored (400); keys live in Secret Manager.
 
 ### Environment variables on the functions
 
@@ -64,12 +63,15 @@ that code.
 | `fireboard_token` | `fireboard` | From Secret Manager secret `fireboard-token`. Local copy: `FIREBOARD_TOKEN` in `.env` |
 | `sensor_id_prefix` | `fireboard`, `tilt` | Optional, defaults `fireboard` / `tilt`; use `test_fireboard` / `test_tilt` for local tests |
 | `tilt_key` | `tilt` | From Secret Manager secret `tilt-key`; the Pico must send it as `?key=`. Full URL in `.env` as `TILT_CLOUD_URL` |
+| `ambient_accounts` | `ambient-weather` | From Secret Manager secret `ambient-weather-accounts`: `{"tommy": {"apiKey": …, "applicationKey": …}, "garrett": …, "nick": …}`. Add an account by adding a secret version + a Scheduler job |
 | `sensor_mapping` | `upload`, `ambient-weather` | JSON. `upload`: `{"tgnourse1":"under_front_stairs","tgnourse4":"master_bedroom","tgnourse5":"maintenance_closet","tgnourse6":"tommy_closet"}` (Sept 2018). `ambient-weather`: `{"A4:CF:12:A0:32:1C":"tgnourse_house"}` |
 
 Mapped devices: when a `sensor_mapping` entry exists, `sensor_id` is the friendly name and the raw ID is
 kept in `original_sensor_id`. `ambient-weather` appends a suffix (`_outdoor`, `_indoor`, `_1`…`_7`) to both,
 so mapping a MAC to a name that already ends in `_indoor` produces `..._indoor_indoor` (this is happening
-for one of Tommy's devices in production).
+for Tommy's indoor hub `24:7D:4D:A3:64:EE` → `tgnourse_house_indoor_indoor`). Leave it: the plain
+`tgnourse_house_indoor` is already the WS-2902A console's indoor reading, and the hub's channels are
+`tgnourse_house_indoor_1`…`_7`, which dashboards use.
 
 Functions must read these with `os.environ`; `request.environ` only carried them on the retired `python37`
 runtime.
@@ -83,9 +85,11 @@ server on `localhost:8000`; `upload` doesn't, so run it with `functions-framewor
 cd ambient-weather
 influxdb_host=$INFLUXDB_HOST influxdb_port=8086 influxdb_user=uploadfunction \
 influxdb_password=$INFLUXDB_UPLOADFUNCTION_PASSWORD influxdb_database=temperatures \
-sensor_mapping='{"A4:CF:12:A0:32:1C":"tgnourse_house"}' python3 main.py
+sensor_mapping='{"A4:CF:12:A0:32:1C":"tgnourse_house"}' \
+ambient_accounts="$(gcloud secrets versions access latest --secret=ambient-weather-accounts --project=iot-data-storage)" \
+python3 main.py
 
-curl "http://localhost:8000/?apiKey=$AMBIENT_API_KEY&applicationKey=$AMBIENT_APPLICATION_KEY"
+curl "http://localhost:8000/?account=tommy"
 ```
 
 To match the deployed runtime, run it under Python 3.12 with
@@ -133,15 +137,19 @@ gcloud functions deploy upload --project=iot-data-storage --region=us-central1 \
 **`ambient-weather` is a Cloud Run function (2nd gen).** It was upgraded on 10/19/2026 with
 `gcloud functions upgrade ambient-weather --setup-config` → `--redirect-traffic` → `--commit`. The commit
 detaches it from the Cloud Functions API, so it's now a Cloud Run service: `gcloud functions list` /
-`describe` / `logs read` don't see it. The `cloudfunctions.net` URL (which Cloud Scheduler calls over
-HTTPS) still works, and it's also at `https://ambient-weather-bgdddlrosa-uc.a.run.app`.
+`describe` / `logs read` don't see it. It's at `https://ambient-weather-bgdddlrosa-uc.a.run.app` (the
+`cloudfunctions.net` URL also still works). Since 11/1/2026 it's **private**: runtime SA
+`ambient-weather-fn@` (reads secrets `ambient-weather-accounts` and `influxdb-uploadfunction-password`),
+and only `ambient-weather-scheduler@` has `roles/run.invoker`. The Scheduler jobs call the `run.app` URL
+with an OIDC token whose audience is that URL. `influxdb_password` is still a plain env var (same value
+as the secret).
 
 ```bash
-# Deploy (not yet exercised since the upgrade; check env vars are kept afterwards)
+# Deploy (env vars, secrets, service account and IAM are kept when these flags are omitted)
 gcloud run deploy ambient-weather --project=iot-data-storage --region=us-central1 \
   --source=ambient-weather --function=upload_function --base-image=python312
 
-# Logs (don't print httpRequest.requestUrl, it has the API keys)
+# Logs (request URLs before 11/1/2026 contain the API keys; don't print httpRequest.requestUrl)
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="ambient-weather"' \
   --project=iot-data-storage --limit=20 --format='value(timestamp,httpRequest.status,textPayload)'
 ```

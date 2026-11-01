@@ -11,13 +11,13 @@ import json
 
 
 def get_devices(application_key, api_key):
-    url = f'https://api.ambientweather.net/v1/devices/?apiKey={api_key}&applicationKey={application_key}&limit=1'
-
-    response = requests.get(url)
-    if response:
-        return response.json()
-    else:
-        return None
+    # Don't let the URL (which carries the keys) end up in an exception message or the logs.
+    response = requests.get('https://api.ambientweather.net/v1/devices/',
+                            params={'apiKey': api_key, 'applicationKey': application_key, 'limit': 1},
+                            timeout=30)
+    if not response.ok:
+        raise RuntimeError(f'Ambient Weather API returned HTTP {response.status_code}')
+    return response.json()
 
 
 def vapor_density(temperature, humidity):
@@ -196,8 +196,14 @@ def upload_function(request):
         Response object using
         `make_response <http://flask.pocoo.org/docs/1.0/api/#flask.Flask.make_response>`.
     """
-    application_key = request.args.get('applicationKey', None)
-    api_key = request.args.get('apiKey', None)
+    # ?account=<name> picks a key pair from the ambient_accounts secret:
+    # {"<name>": {"apiKey": "...", "applicationKey": "..."}, ...}
+    accounts = json.loads(get_env("ambient_accounts"))
+    account = accounts.get(request.args.get('account', ''))
+    if not account:
+        return 'Unknown or missing account\n', 400
+    application_key = account['applicationKey']
+    api_key = account['apiKey']
 
     sensor_mapping = json.loads(os.environ.get("sensor_mapping", "{}"))
     pprint.pprint('Using this sensor mapping: \n' + pprint.pformat(sensor_mapping))
